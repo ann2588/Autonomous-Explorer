@@ -5,7 +5,7 @@ global pstat, model, path
 import os, time, datetime
 from datetime import datetime
 import matplotlib.pyplot as plt
-#from liquidhandling import stirring, plate, Rinsing
+from .liquidhandling import stirring, plate, Rinsing
 from scipy.signal import savgol_filter
 import seaborn as sns
 import warnings
@@ -693,7 +693,6 @@ def run_CV_HER_varyE(mainpath, sample, gas, sr_cv=50):
     #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
     #for idx in indices:
     #    plt.plot(cvref.E[idx], cvref[])
-#%%
 def run_CV_varysr(mainpath, sample):
     """
     Run a CV experiment and save the results.
@@ -765,11 +764,6 @@ def run_CV_varysr(mainpath, sample):
     #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
     #for idx in indices:
     #    plt.plot(cvref.E[idx], cvref[])
-
-#%%
-#base_path = f'C:/Users/guazh/data/{mainfold}'
-#create_directory(base_path)
-
 def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'):
     '''
     This function perform electrodeposition with designated potential and time
@@ -792,7 +786,7 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
-    model = 'chi760e'
+    model = 'chi760f'
     path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
@@ -803,7 +797,7 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'
     Ru = getRu(child_filepath, ocp_data_E)
 
     # deposition start
-    print('Electrodeposition started.')
+    print('Bulk electrolysis started.')
     plate.start_stirring()
     time.sleep(15)
     fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100)
@@ -826,7 +820,4 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'
     time.sleep(15)
     print('Finished waiting\n')
     # charge = np.trapz(itcurve_data.i[:,0],itcurve_data.t)
-
-
-# 38.742g for 100 mL ACN
 

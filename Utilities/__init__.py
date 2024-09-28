@@ -19,3 +19,8 @@ __all__ = [
     'GCcontrolling'
 ]
 
+def Purge_Ar_in_voir():
+    change_port()
+    control_gas_flow(mfm, 'open', flow_rate=30)
+
+

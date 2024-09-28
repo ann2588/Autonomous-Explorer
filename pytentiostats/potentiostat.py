@@ -5,9 +5,8 @@ import threading
 from threading import Thread
 import time
 from concurrent.futures import ThreadPoolExecutor
-#Update command error data: 03/11/2024
+# Update command error data: 03/11/2024
 # Potentiostat models available: chi760f
-# Global variables
 
 folder_save = '.'
 model_pstat = 'no pstat'

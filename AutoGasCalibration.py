@@ -2,24 +2,23 @@
 from Utilities.gashandling import *
 from gccontrol.sri_gc import *
 
+
 #@@ Todo: Baking method configuration
-#%%
-gc = GC_Connector() #reopen the peaksimple software before running this command
+#%% Parameter setting
 main_folder = '2024-09-24_lowconc' #Enter the name of your folder
 gas_ratio = [0.01, 0.1, 0.2] #Enter the ratio you want to try in list
-#%% Update the file path
+#%% GC method setting
+gc = GC_Connector() #reopen the peaksimple software before running this command
 data_path = f'C:\\Peak498Win10\\GCDATA\\{main_folder}' #Update your folder here
 os.makedirs(data_path, exist_ok=True)
 gc.update_gc_settings(data_path)
 
-#%% Load GC method and update data file saving path in
+#% Load GC method and update data file saving path in GC
 ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0819-2020_90-210C_11min.CON" # the path of your folder
 gc.ctrl_file = ctrl_file
 gc.load_ctrl_file() #Running error but actually successful
 gc.update_gc_settings(data_path)
-#%%
-gas_ratio = [0.01, 0.1, 0.2]
-#%%
+
 def start_measuring_calibration_curve(data_path = data_path):
     try:
         while gc.is_running():
@@ -72,16 +71,22 @@ def start_measuring_calibration_curve(data_path = data_path):
     except Exception as e:
         print(f"Error occurred: {e}")
 
-#%% Experiment Finished. Start baking the column
-baking_ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0622-2019_270C_50min_baking.CON"
-#@@ Todo check the setting of channel 2 temperature log file
-print('Experiment Finished. Start baking the column.')
-gc.ctrl_file = baking_ctrl_file
-gc.load_ctrl_file()
-gc.set_running()
-time.sleep(3000)
-while gc.is_running():
-    print('Still baking. Wait for another minute.')
-    time.sleep(60)
-script_path = "C:/Users/guazh/PycharmProjects/CO2platform/Utilities/slack-bot.py"
-os.system(f'python {script_path} -m "Baking completed. Please turn off FID manually"')
+if __name__ == "__main__":
+    main_folder = '2024-09-24_lowconc'  # Enter the name of your folder
+    gas_ratio = [0.01, 0.1, 0.2]  # Enter the ratio you want to try in list
+    #start
+    start_measuring_calibration_curve(data_path = data_path)
+
+    #%% Experiment Finished. Start baking the column
+    baking_ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0622-2019_270C_50min_baking.CON" #The folder path of your baking method
+    #@@ Todo check the setting of channel 2 temperature log file
+    print('Experiment Finished. Start baking the column.')
+    gc.ctrl_file = baking_ctrl_file
+    gc.load_ctrl_file()
+    gc.set_running()
+    time.sleep(3000)
+    while gc.is_running():
+        print('Still baking. Wait for another minute.')
+        time.sleep(60)
+    script_path = "C:/Users/guazh/PycharmProjects/CO2platform/Utilities/slack-bot.py"
+    os.system(f'python {script_path} -m "Baking completed. Please turn off FID manually"')

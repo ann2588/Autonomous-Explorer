@@ -1,37 +1,24 @@
 from Utilities import portaccess
+from .gashandling import *
 from ika.magnetic_stirrer import MagneticStirrer
 from ismatec.peristaltic_pump import RegloICCFourChannel
 from Hardwaretesting import MXII_valve as mxii, MFC
 from Hardwaretesting.Valves import changing_port
-#from gashandling import purgeAr
 import ismatec.errors
 import time
 import asyncio
 import time
 import datetime
 
-#%%
-
 # %% Hardware Connection and Setup
-global icca, iccb, plate
+global icca, iccb
 plate = MagneticStirrer(device_port=portaccess.port_plate)
-#switchv = mxii.MX_valve(portaccess.port_switchvalve, ports=2, name='Switching', verbose=True)
+swtv = mxii.MX_valve(portaccess.port_switchvalve, ports=2, name='Switching', verbose=True)
 valve_slva = mxii.MX_valve(portaccess.port_selectionvalveA, ports=6, name='SelectionA', verbose=True)
 valve_slvc = mxii.MX_valve(portaccess.port_selectionvalveC, ports=6, name='SelectionC', verbose=True)
 icca = RegloICCFourChannel(portaccess.port_pumpA)
 iccb = RegloICCFourChannel(portaccess.port_pumpB)
 
-#async def run_with_retry(coroutine, *args, **kwargs):
-#    try:
-#        await coroutine(*args, **kwargs)
-#    except:
-#        await coroutine(*args, **kwargs)
-#def purgeAr(flowrate=50):
-#    changing_port(switchv, switching_position['loading'])
-#    asyncio.run(run_with_retry(MFC.n2on, flowrate))
-#
-#def offAr(flowrate=0):
-#    asyncio.run(run_with_retry(MFC.n2off, flowrate))
 #%%PUMP and VALVE
 iccb_channel = {'waste_ano': 1, 'waste_cat': 2, 'slvc': 3, 'waste_voir': 4}
 icca_channel = {'water': 1, 'electrolyte': 2, 'il': 3, 'waste':4}
@@ -46,10 +33,21 @@ volume = {
     '5mL': {'rpm': 100, 'second': 20},  # Rinsing
     '6mL': {'rpm': 100, 'second': 25},  # Rinsing
     '12mL' :{'rpm': 100, 'second': 50},  # Rinsing
-    '50mL' :{'rpm': 100, 'second': 110}  # Rinsing
+    '26mL' :{'rpm': 100, 'second': 110},  # Rinsing
+    '50mL' :{'rpm': 100, 'second': 210}  # Rinsing
 }
 
-#%% Pump Direction setting
+#%% Purge
+def Purge_Ar_in_voir(OPERATION:str):
+    '''
+    purging gas from switch valve to voir in order to degas a bit
+    :param OPERATION: 'open', 'close'
+    '''
+    changing_port(swtv, switching_position['loading'])
+    control_gas_flow(mfc_swtv, {OPERATION}, flow_rate=30)
+
+def Purge_Ar_in_cell():
+    control_co2_ar_ratio(0)
 
 #%%  Utilities for Liquid handling
 def stirring(plate=None, stirring_time=30, rpm=800):
@@ -164,9 +162,7 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
 
     print(valve, valve_port)
     changing_port(valve, valve_port)
-    #changing_port(switchv, switching_position['loading'])
-    purgeAr()
-
+    control_gas_flow(mfc_swtv, 'open', flow_rate=30)
     # load mode initial filling
     pump.set_mode_pump_rpm(pump_channel, 100)  # check the input value
     pump.start(pump_channel)
@@ -181,11 +177,11 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
         pump.set_mode_pump_rpm(pump_channel, 20)
         pump.start(pump_channel)  # initial filling of each tube
         time.sleep(3)
-        changing_port(switchv, switching_position['injection'])
+        changing_port(swtv, switching_position['injection'])
         print(f'Injecting {element}')
         pump.start(pump_channel)
         time.sleep(3)
-        changing_port(switchv, switching_position['loading'])
+        changing_port(swtv, switching_position['loading'])
         time.sleep(1)
         pump.stop(pump_channel)
 def select_solution_IL(element= None):
@@ -193,31 +189,28 @@ def select_solution_IL(element= None):
         valve = valve_slva
         valve_port = stock_solution_port_a[element]
         pump = icca  # to remove the quote
-        pump_channel = icca_channel['slva']
+        pump_channel = icca_channel['il']
     else:
         raise ValueError("Element not recognized")  # Do sth else to add blank solution
     return valve, valve_port, pump, pump_channel
-def titration_rinsing(valve, valve_port,pump, pump_channel):
+def titration_channel_rinsing(valve, valve_port,pump, pump_channel):
     changing_port(valve, valve_port)
-    changing_port(switchv, switching_position['loading'])
+    changing_port(swtv, switching_position['loading'])
     pump.set_mode_pump_rpm(pump_channel, 100)  # check the input value
     pump.start(pump_channel)
     time.sleep(15)
     pump.stop(pump_channel)
 
-#%% Utilitis for Plating Solution Making, pending to be optimize for varying potential
-'''
-#Pass one of the following samples to test the plating solution module
-titrationmoduletestsample = {'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1, 'Blank': 0}
-#rinsingvalvesample = {'blanka':5, 'blankb':5}
+#%% Utilitis for electrolyte formulation, pending to be optimize for varying potential
 
-def test_make_solution_module(sample):
-    
-    This function run every channel in making solution module for 1 droplet
-    please run this function and check in person to see if every channel is working
-    
+def test_titration_module(sample):
+    '''
+    This function run every channel in making solution module for 1 equivilent
+    please run this command and check in person to see if every channel is working properly
+    Status: Pending test run
+    '''
     for element, partition in sample.items():
-        if element in ['V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'S', 'Se', 'P', 'blank']:
+        if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5', 'Blank']:
             if partition == 0.0:
                 continue
             else:
@@ -226,42 +219,51 @@ def test_make_solution_module(sample):
                 print(
                     f'Adding {element} for {int(partition)} times with {valve} at port {valve_port}, {pump} running at channel {pump_channel}')
                 titration(element, int(partition), pump, valve, valve_port, pump_channel)
-                if valve == valve_slva:
-                    print(f'Rinsing titration channel by blank solution from {valve_slva}')
-                    titration_rinsing(valve_slva, stock_solution_channels_a['blank'], icca,
-                                      pump_channel=icca_channel['slva'])
-                else:
-                    continue
         else:
             continue
-    print('make_solution_test finished')
-def make_plating_solution(sample:dict):
-    global valve
-    cell_rinsing('water', 'spelec', 3)
-    pumping_waste_out()
-    add_solution('spelec', '4mL') #@@ Require customization
-    add_solution('spelec', '1mL') #@@ Require customization
-    print('1 mL spelec added to cell')
+    print('Titration Test module test completed')
+
+#please run below command and check in person to see if every channel is working properly
+#titrationmoduletestsample = {'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1, 'Blank': 0}
+#test_titration_module(titrationmoduletestsample)
+
+#Electrolyte formulation
+def Elelectrolyte_Formulation(sample:dict):
+    '''
+    Formulating the electrolyte with ionic liquid
+    Status: Pending test run
+    :return
+    '''
+    pumping_waste_out('cell')
+    pumping_waste_out('voir')
+    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='50mL')
+    print('50 mL electrolyte added to reservoir')
     for element, partition in sample.items():
-        if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','Blank']:
+        if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','blank']:
             if partition == 0.0:
                 continue
             else:
                 valve, valve_port, pump, pump_channel = select_solution_IL(element=element)
-                plate.start_stirring()
                 print(
                     f'Adding {element} for {int(partition)} times with {valve} at port {valve_port}, {pump} running at channel {pump_channel}')
                 titration(element, int(partition), pump, valve, valve_port, pump_channel)
-                if valve == valve_slva:
-                    print(f'Rinsing titration channel by blank solution from {valve_slva}')
-                    titration_rinsing(valve_slva, stock_solution_channels_a['blank'], icca, pump_channel=icca_channel['slva'])
-                #elif valve == valve_slvb:
-                #    print(f'Rinsing titration channel by blank solution from {valve_slvb}')
-                #    titration_rinsing(valve_slvb, stock_solution_channels_b['blank'], icca, pump_channel=icca_channel['slvb'])
-                else:
-                    continue
+                titration_channel_rinsing(valve, stock_solution_port_a['blank'], pump, pump_channel=icca_channel['il'])
         else:
             continue
-    #add_solution('spelec', '2mL')  # pump control
-    print('spelec added to cell to 5 mL total volume')
-'''
+    time.sleep(30) #Stir for 30 sec
+    print('Electrolyte formulated in reservoir')
+
+def PlatingSolutionFormulation(sample:dict):
+    '''
+    Formulating the electrolyte with ionic liquid
+    Status: Pending test run
+    :return
+    '''
+    pumping_waste_out('cell')
+    Rinsing('cell', 'spelec', 'cu', 3, volume_assigned='50mL')
+    print('50 mL electrolyte added to reservoir')
+
+    #@@ Pending varying the cu conc.
+
+    stirring()
+    #print('Electrolyte formulated in reservoir')

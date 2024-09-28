@@ -1,9 +1,12 @@
-from Utilities.electrochemistry import *
+from random import sample
+
+import Utilities
 from Utilities.liquidhandling import *
 from Utilities.gashandling import *
-# Last update: 09/16/2024
-
-#%% Rinsing function test
+from Utilities.electrochemistry import *
+from Utilities.GCcontrolling import *
+# Last update: 09/27/2024
+# Note: The closed-loop process still requires testing
 
 
 
@@ -22,10 +25,10 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         create_directory(initial_path)
         insitu_echem_regeneration(initial_path)
         Rinsing('cell','water', 'electrolyte', 3)
-        purgeAr(50)
+        control_co2_ar_ratio(0)
         time.sleep(60)
         run_CV_HER_varyE(initial_path, sample=cat, gas='ArKOH', sr_cv=50)
-        offAr()
+        control_co2_ar_ratio(0)
 
     for expn, exp in doe.items():
         print(f'Running {expn}...')
@@ -36,33 +39,36 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         create_directory(exp_path)
 
         # Stage 1: Cu film deposition
-        Prepare_deposition_solution(sample=exp) #@todo
-        purgeAr(50)
+        PlatingSolutionFormulation(doe.items) #@todo
+        control_co2_ar_ratio(0)
         stirring(plate, 60)
         deposit_v, deposit_t = exp['Volt'], exp['Time'] ### Use previous notation
         electrodeposition(exp_path, f'{cat}Deposition', deposit_v, deposit_t)
         Rinsing('cell','spelec', 'spelec', 2)
 
         # Stage 3: Electrolysis
-        Prepare_electrolyte_withIL(sample=exp) #@todo
-        #purgeCO2Ar(CO2ratio = , gas_flowrate = )
+        Elelectrolyte_Formulation(sample=exp)
         plate.start_stirring()
         time.sleep(180)
-        Rinsing('cell', 'water', 'electrolyte', 3)
+        Rinsing('cell', 'water', 'electrolyte', 1)
+        close_all_gas()
         run_CV_HER_varyE(exp_path, sample=cat, gas=f'{CO2ratio}CO2', sr_cv=50)
+        control_co2_ar_ratio({CO2ratio})
         bulk_electrolysis(exp_path, sample=cat, gas=f'{CO2ratio}CO2', E_ed = electrolysis_v)
 
-        subprocess_Regeneration(GC) #@todo
+        # Usually Regeneration takes 2.5 hours.
+        # after run GC. Running Regeneration.
+        # Can we make regeneration another module?
+        # os.execvp() vs sub processing
+
+
         #@@ GC controlling command
         #offCO2Ar()
         Rinsing('cell','electrolyte', 'electrolyte', 1)
 
         # Stage 4: electrode Regeneration
-
-        subprocess_Regeneration() #@todo
         insitu_echem_regeneration(exp_path)
         Rinsing('cell','water', 'electrolyte', 3)
-        purgeAr(gas_flowrate = 50)
         plate.start_stirring()
         time.sleep(60)
         LSV_HER(exp_path, 'RegeneratedGCE', criteria_current=10)
@@ -70,7 +76,7 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         os.system(f'python {script_path} -m "{cat} completed"')
 
 
-        Sent_to_BO() #@TODO
+
 
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
