@@ -1,6 +1,6 @@
 #%%
 from Utilities.gashandling import *
-from gccontrol.sri_gc import *
+from Utilities.gasanalyzer import *
 
 
 #@@ Todo: Baking method configuration
