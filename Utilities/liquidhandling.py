@@ -1,8 +1,8 @@
-from Utilities import portaccess
+from .portaccess import *
 from .gashandling import *
 from ika.magnetic_stirrer import MagneticStirrer
 from ismatec.peristaltic_pump import RegloICCFourChannel
-from Hardwaretesting import MXII_valve as mxii, MFC
+from Hardwaretesting import MXII_valve as mxii
 from Hardwaretesting.Valves import changing_port
 import ismatec.errors
 import time
@@ -12,12 +12,12 @@ import datetime
 
 # %% Hardware Connection and Setup
 global icca, iccb
-plate = MagneticStirrer(device_port=portaccess.port_plate)
-swtv = mxii.MX_valve(portaccess.port_switchvalve, ports=2, name='Switching', verbose=True)
-valve_slva = mxii.MX_valve(portaccess.port_selectionvalveA, ports=6, name='SelectionA', verbose=True)
-valve_slvc = mxii.MX_valve(portaccess.port_selectionvalveC, ports=6, name='SelectionC', verbose=True)
-icca = RegloICCFourChannel(portaccess.port_pumpA)
-iccb = RegloICCFourChannel(portaccess.port_pumpB)
+plate = MagneticStirrer(device_port=port_plate)
+swtv = mxii.MX_valve(port_switchvalve, ports=2, name='Switching', verbose=True)
+valve_slva = mxii.MX_valve(port_selectionvalveA, ports=6, name='SelectionA', verbose=True)
+valve_slvc = mxii.MX_valve(port_selectionvalveC, ports=6, name='SelectionC', verbose=True)
+icca = RegloICCFourChannel(port_pumpA)
+iccb = RegloICCFourChannel(port_pumpB)
 
 #%%PUMP and VALVE
 iccb_channel = {'waste_ano': 1, 'waste_cat': 2, 'slvc': 3, 'waste_voir': 4}

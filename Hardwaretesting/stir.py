@@ -1,6 +1,3 @@
-#can be executed from main. But cannot call the function. The library should be call inside the main
-
-
 from ika.magnetic_stirrer import MagneticStirrer
 import time
 # port_plate = 'COM8'

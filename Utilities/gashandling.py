@@ -2,7 +2,7 @@ from Utilities import portaccess, valve_slvc  # Chang your portaccess here
 import time
 from alicat import FlowController
 from alicat import FlowMeter
-from liquidhandling import changing_port
+
 #%%
 ## Dictionary to store CO2 ratios and corresponding MFC settings
 gas_ratio = [0, 2, 8, 10, 25, 50, 75, 100]
@@ -54,4 +54,4 @@ def control_co2_ar_ratio(ratio):
 def close_all_gas():
     mfc_ar.set_flow_rate(0)
     mfc_co2.set_flow_rate(0)
-    mfc_co2ar.set_flowrate(0)
+    mfc_co2ar.set_flow_rate(0)
