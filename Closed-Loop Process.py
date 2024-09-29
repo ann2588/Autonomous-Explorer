@@ -4,7 +4,7 @@ import Utilities
 from Utilities.liquidhandling import *
 from Utilities.gashandling import *
 from Utilities.electrochemistry import *
-from Utilities.GCcontrolling import *
+from Utilities.gasanalyzer import *
 # Last update: 09/27/2024
 # Note: The closed-loop process still requires testing
 
