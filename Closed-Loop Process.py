@@ -8,8 +8,6 @@ from Utilities.GCcontrolling import *
 # Last update: 09/27/2024
 # Note: The closed-loop process still requires testing
 
-
-
 #%% Macro script
 def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
 
@@ -55,7 +53,7 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         run_CV_HER_varyE(exp_path, sample=cat, gas=f'{CO2ratio}CO2', sr_cv=50)
         control_co2_ar_ratio({CO2ratio})
         bulk_electrolysis(exp_path, sample=cat, gas=f'{CO2ratio}CO2', E_ed = electrolysis_v)
-
+        # gc.update_gc_settings(
         # Usually Regeneration takes 2.5 hours.
         # after run GC. Running Regeneration.
         # Can we make regeneration another module?
