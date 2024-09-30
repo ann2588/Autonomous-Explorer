@@ -2,15 +2,19 @@ from Utilities.liquidhandling import *
 from Utilities.gashandling import *
 from Utilities.electrochemistry import *
 from Utilities.gasanalyzer import *
+from DoEFormatting import *
 # Last update: 09/27/2024
 # Note: The closed-loop process still requires testing
 
+
+
 #%% Macro script
-def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
+def CO2Optimizer(mainfold: str, doe:exp_dicts, initialization:True):
 
     date = datetime.now().strftime('%Y-%m-%d')
     base_path = f'C:/Users/guazh/data/{mainfold}'
     create_directory(base_path)
+
 
     #Stage 0: Initialization
     if initialization == True:
@@ -24,7 +28,7 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         time.sleep(60)
         run_CV_HER_varyE(initial_path, sample=cat, gas='ArKOH', sr_cv=50)
 
-    for expn, CuDep, CO2ratio, IL in doe.items():
+    for expn, exp in doe.items():
         print(f'Running {expn}...')
 
         cat = expn
@@ -33,39 +37,40 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
         create_directory(exp_path)
 
         # Stage 1: Cu film deposition
-        PlatingSolutionFormulation(CuDep) #@todo formulate doe files
+        PlatingSolutionFormulation(exp['CuConc']) #@todo formulate doe files
         control_co2_ar_ratio(0)
         stirring(plate, 60)
-        deposit_v, deposit_t = CuDep['Volt'], CuDep['Time'] ### Use previous notation
+        deposit_v, deposit_t = exp['Volt'], exp['Time'] ### Use previous notation
         electrodeposition(exp_path, f'{cat}Deposition', deposit_v, deposit_t)
         Rinsing('cell','spelec', 'spelec', 2)
 
-        # Stage 2: Electrolyte formaulation with
-        Elelectrolyte_Formulation(IL)
+        # Stage 2: Electrolyte formulation with
+        il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
+        Elelectrolyte_Formulation(il_values)
 
         # Stage 3: Echem characterization & Bulk electrolysis
         plate.start_stirring()
         time.sleep(180)
         Rinsing('cell', 'water', 'electrolyte', 1)
         close_all_gas()
-        run_CV_HER_varyE(exp_path, sample=cat, gas=f'{CO2ratio}CO2', sr_cv=50)
-        control_co2_ar_ratio({CO2ratio})
+        run_CV_HER_varyE(exp_path, sample=cat, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
+        control_co2_ar_ratio(exp['CO2ratio'])
         potential_windows = [-1.0, -1.4, -1.6, -1.8, -2.0] # Pending determining numbers of potential windows
         for voltage in potential_windows:
-            bulk_electrolysis(exp_path, sample=cat, gas=f'{CO2ratio}CO2', E_ed = voltage)
+            bulk_electrolysis(exp_path, sample=cat, E_ed = voltage, note=f"{exp['CO2ratio']}CO2")
             ''' 
             #@@ Pending using client/server format for hardware communication when electrolysis/sample injection
             # Current challenge: Cannot run other command while the echem tech is running due to subprocess format.
             # os.execvp() vs sub processing
             '''
 
-        #offCO2Ar()
+        close_all_gas()
         Rinsing('cell','electrolyte', 'electrolyte', 1)
 
         # Stage 4-1: GC data processing
 
 
-        # Stage 4-2: electrode Regeneration
+        # Stage 4-2: Electrode Regeneration
         insitu_echem_regeneration(exp_path)
         Rinsing('cell', 'water', 'electrolyte', 3)
         plate.start_stirring()
@@ -83,10 +88,5 @@ def CO2Optimizer(mainfold: str, doe:dict, initialization:True):
 
 #%%%
 if __name__ == '__main__':
-   doepath="C:\\Users\\guazh\\data\\Batch\\20240802_batch\\20240802_batch_500.csv"
-
-#doedicts = doeprocess(doepath)
-#doedicts_0903 = dict(list(doedicts.items())[251:])
-#
-#CO2Optimizer('20240813_batch_89_500', doedicts_0813, initialization = False)
-#CO2Optimizer('20240903_batch_252_500', doedicts_0903, initialization = True)
+   main_folder = 'Your Filename'
+   CO2Optimizer(main_folder, exp_dicts, Initialization = True)

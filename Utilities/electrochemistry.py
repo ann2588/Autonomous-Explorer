@@ -13,7 +13,7 @@ import glob
 
 # %% Basic setting
 message_completed = 'Experiment completed'
-message_stuck = 'Unusual impedende in electrolyte, Check if the tube stuck'
+message_stuck = 'Unusual impedence in electrolyte, Check if the tube stuck'
 script_path = "C:/Users/guazh/PycharmProjects/AutoHeteroCata/slack-bot.py"
 default_path = "C:/Users/guazh/data"
 np.errstate(divide='ignore')
@@ -786,8 +786,6 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
-    model = 'chi760f'
-    path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
     stirring(plate, 30)
