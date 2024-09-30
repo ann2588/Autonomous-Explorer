@@ -2,11 +2,11 @@
 from Utilities.gashandling import *
 from Utilities.gasanalyzer import *
 
-
 #@@ Todo: Baking method configuration
 #%% Parameter setting
 main_folder = '2024-09-24_lowconc' #Enter the name of your folder
 gas_ratio = [0.01, 0.1, 0.2] #Enter the ratio you want to try in list
+
 #%% GC method setting
 gc = GC_Connector() #reopen the peaksimple software before running this command
 data_path = f'C:\\Peak498Win10\\GCDATA\\{main_folder}' #Update your folder here

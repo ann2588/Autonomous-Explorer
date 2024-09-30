@@ -5,7 +5,8 @@ import threading
 from threading import Thread
 import time
 from concurrent.futures import ThreadPoolExecutor
-# Update command error data: 03/11/2024
+# Update command error by Jingwen Sun
+# Update i-t technique by Yi-An Lai
 # Potentiostat models available: chi760f
 
 folder_save = '.'
