@@ -1,0 +1,67 @@
+'''
+The example for how to call a technique through pytentilstats lib
+'''
+
+def run_CV_varysr(mainpath, sample):
+    """
+    Run a CV experiment and save the results.
+
+    Parameters:
+    - mainpath: The main directory path for saving results.
+    - sample: Sample name as a string.
+    - sr_cv: Scan rate for CV, default is 50.
+    """
+
+    main_filepath = mainpath
+    create_directory(main_filepath)
+
+    datetime_str = generate_timestamp()
+    adding = f'{sample}-{datetime_str}'
+    child_filepath = os.path.join(main_filepath, adding)
+    create_directory(child_filepath)
+
+    model = 'chi760f'
+    path = 'C:/chi'  # Path to the chi760f.exe
+    pstat.Setup(model=model, path_exe=path, folder=child_filepath)
+    filename = sample
+
+    # Stirring the plate for 30 seconds
+    time.sleep(30)
+    ocp_data_E = getOCP(child_filepath)
+    Ru = getRu(child_filepath, ocp_data_E)
+
+
+
+    Eini, Ev1, Ev2, Efin = -0.6, -1.8, -0.6, -0.6
+    sr_cv = [1500000, 800000, 600000, 400000, 200000, 500, 100]
+    Rus = [750, 750, 750, 750, 750, 750, 750]
+    senses = [1E-3, 1E-3, 1E-3, 1E-5, 1E-6, 1E-6, 1E-7]
+    for sr, sens, Ru in zip(sr_cv, senses, Rus):
+        ### How to call a technique
+        fileName = f'{filename}_CV_sr_{sr:.0f}mVs_Efin_{Ev1 * 1000:.0f}mV'
+        cvheader = f'CV ran at {sr:.0f} mVs'
+        cv2 = pstat.CV(
+            Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=6, dE=0.001, sr=sr / 1000,
+            sens=senses, fileName=fileName, header=cvheader, qt=2
+        )
+        cv2.ircomp(Ru=Ru)
+        time.sleep(5)
+        cv2.run()
+        time.sleep(5)
+        
+        ### Ploting
+        cvref = pstat.LoadCV(fileName, folder=child_filepath, model=model)
+        cvrhe = LSV_converter_inexp(cvref.E, cvref.i[:, 0])
+        #plt.plot(cvref.E, cvref.i[:, 0])
+        #plt.savefig(os.path.join(child_filepath, f"{filename}.png"))
+        plot_cv_data(cvrhe, child_filepath, fileName)
+        #save_cvrhe_to_txt(cvrhe, child_filepath, fileName)
+
+        print(f'Finished measuring CV at {sr_cv} mV/s with Efin at {Ev1 * 1000:.0f} V')
+        #plate.stop_stirring()
+        time.sleep(15)
+    # This line didnt work, the plot should be processed later after the experiment
+
+    #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
+    #for idx in indices:
+    #    plt.plot(cvref.E[idx], cvref[])
