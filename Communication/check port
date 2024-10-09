@@ -1,0 +1,6 @@
+
+#%% The command to run in terminal
+
+'''
+sudo lsof -i -P -n | grep LISTEN
+'''
