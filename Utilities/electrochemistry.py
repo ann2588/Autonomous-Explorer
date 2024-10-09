@@ -702,14 +702,6 @@ def run_CV_varysr(mainpath, sample):
     - sample: Sample name as a string.
     - sr_cv: Scan rate for CV, default is 50.
     """
-    '''
-    1mM in 10 mL:
-    NHPester 1mM in 10 mL
-    AQC-3-3
-    AQC-3-4
-    AQC-3-5
-    AQC-3-6
-    '''
 
     main_filepath = mainpath
     create_directory(main_filepath)
