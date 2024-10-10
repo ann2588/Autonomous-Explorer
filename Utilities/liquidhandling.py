@@ -9,6 +9,7 @@ import time
 import asyncio
 import time
 import datetime
+from Communication.Logging import *
 
 # %% Hardware Connection and Setup
 global icca, iccb
@@ -18,7 +19,7 @@ valve_slva = mxii.MX_valve(port_selectionvalveA, ports=6, name='SelectionA', ver
 valve_slvc = mxii.MX_valve(port_selectionvalveC, ports=6, name='SelectionC', verbose=True)
 icca = RegloICCFourChannel(port_pumpA)
 iccb = RegloICCFourChannel(port_pumpB)
-
+cat = str()
 #%%PUMP and VALVE
 iccb_channel = {'waste_ano': 1, 'waste_cat': 2, 'slvc': 3, 'waste_voir': 4}
 icca_channel = {'water': 1, 'electrolyte': 2, 'il': 3, 'waste':4}
@@ -70,10 +71,10 @@ def flushing(pump, channel, rpm, second):
     pump.set_mode_pump_rpm(channel, rpm)
     try:
         pump.start(channel)
-        print(f'\nStarting {pump} {channel} channel at {rpm} rpm')
+        print(f'\nStarting {pump.__str__()} {channel} channel at {rpm} rpm')
     except ismatec.errors.PumpError:
         pump.stop(channel)
-        print(f'\n{pump} {channel} keeps stopped because 0 rpm assigned.')
+        print(f'\n{pump.__str__()} {channel} keeps stopped because 0 rpm assigned.')
     time.sleep(second)
     pump.stop(channel)
 def select_solution_rinsing(solution_type=None, to_voir=False):
@@ -217,7 +218,7 @@ def test_titration_module(sample):
                 valve, valve_port, pump, pump_channel = select_solution_IL(element=element)
                 plate.start_stirring()
                 print(
-                    f'Adding {element} for {int(partition)} times with {valve} at port {valve_port}, {pump} running at channel {pump_channel}')
+                    f'Adding {element} for {int(partition)} times with {valve.__str__()} at port {valve_port}, {pump.__str__()} running at channel {pump_channel}')
                 titration(element, int(partition), pump, valve, valve_port, pump_channel)
         else:
             continue
@@ -245,7 +246,7 @@ def Elelectrolyte_Formulation(sample:dict):
             else:
                 valve, valve_port, pump, pump_channel = select_solution_IL(element=element)
                 print(
-                    f'Adding {element} for {int(partition)} times with {valve} at port {valve_port}, {pump} running at channel {pump_channel}')
+                    f'Adding {element} for {int(partition)} times with {valve.__str__()} at port {valve_port}, {pump.__str__()} running at channel {pump_channel}')
                 titration(element, int(partition), pump, valve, valve_port, pump_channel)
                 titration_channel_rinsing(valve, stock_solution_port_a['blank'], pump, pump_channel=icca_channel['il'])
         else:

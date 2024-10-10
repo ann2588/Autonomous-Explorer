@@ -31,7 +31,7 @@ def start_measuring_calibration_curve(data_path = data_path):
             print(f"Setting CO2/Ar ratio to {co2ratio}%")
             datapath = os.path.join(data_path, f'ratio_{co2ratio}')
             os.makedirs(datapath, exist_ok=True)
-            gc.update_gc_settings(data_path)
+            gc.update_gc_settings(datapath)
 
             ## Step One: Control gas flow mixture output at certain flow rate and ratio
             # Control CO2 and Ar flow rates
@@ -61,7 +61,7 @@ def start_measuring_calibration_curve(data_path = data_path):
 
             ## Check if the measurement complete
             while gc.is_running():
-                print('GC is still in post-run. Wait for another minute.')
+                print('GC is still running. Wait for another minute.')
                 time.sleep(60)
 
             #@@Todo Data analysis pending the integration script

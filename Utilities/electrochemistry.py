@@ -10,11 +10,11 @@ from scipy.signal import savgol_filter
 import seaborn as sns
 import warnings
 import glob
-
+cat = str()
 # %% Basic setting
 message_completed = 'Experiment completed'
 message_stuck = 'Unusual impedence in electrolyte, Check if the tube stuck'
-script_path = "C:/Users/guazh/PycharmProjects/AutoHeteroCata/slack-bot.py"
+script_path = "C:/Users/guazh/PycharmProjects/CO2Optimizer/slack-bot.py"
 default_path = "C:/Users/guazh/data"
 np.errstate(divide='ignore')
 warnings.simplefilter(action='ignore', category=(FutureWarning))
@@ -50,6 +50,7 @@ def getOCP(child_filepath, time_ocp=5):
     time.sleep(15)
     print('Finished waiting\n')
     return ocp_data.E
+
 def getRu(child_filepath, ocp_data_E):
     print('Measuring EIS at OCP and get Ru')
     Eini = np.mean(ocp_data_E)
@@ -66,6 +67,7 @@ def getRu(child_filepath, ocp_data_E):
     time.sleep(15)
     print('Finished waiting\n')
     return Ru
+
 def LSV_converter_inexp(potential, current, phosphate=False):
     '''
     Convert LSV from Ag/AgCl to RHE scale
@@ -756,7 +758,7 @@ def run_CV_varysr(mainpath, sample):
     #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
     #for idx in indices:
     #    plt.plot(cvref.E[idx], cvref[])
-def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'):
+def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'):
     '''
     This function perform electrodeposition with designated potential and time
     :param mainpath: The dic you want to store your data
@@ -811,3 +813,84 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 210, note='Electrolysis'
     print('Finished waiting\n')
     # charge = np.trapz(itcurve_data.i[:,0],itcurve_data.t)
 
+def bulk_electrolysis_beforeCP(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'):
+    '''
+    This function perform electrodeposition with designated potential and time
+    :param mainpath: The dic you want to store your data
+    :param sample: Sample name
+    :param E_ed: Potential for electrodeposition in negative value
+    :param Time_ed: Deposition time in second
+    :param note:
+    :return: #Todo Return integrated C
+    '''
+    # CHI Settings
+
+    filename = sample
+    main_filepath = mainpath
+    create_directory(main_filepath)
+
+    datetime_str = generate_timestamp()
+    adding = f'{sample}-{datetime_str}-{note}'
+
+    child_filepath = os.path.join(main_filepath, adding)
+    create_directory(child_filepath)
+
+    pstat.Setup(model=model, path_exe=path, folder=child_filepath)
+
+    stirring(plate, 30)
+    time.sleep(30)
+
+    ocp_data_E = getOCP(child_filepath)
+    global Ru
+    Ru = getRu(child_filepath, ocp_data_E)
+
+    return Ru
+
+def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 300, note='Electrolysis'):
+    '''
+    This function perform electrodeposition with designated potential and time
+    :param mainpath: The dic you want to store your data
+    :param sample: Sample name
+    :param E_ed: Potential for electrodeposition in negative value
+    :param Time_ed: Deposition time in second
+    :param note:
+    :return: #Todo Return integrated C
+    '''
+    # CHI Settings
+
+    filename = sample
+    main_filepath = mainpath
+    create_directory(main_filepath)
+
+    datetime_str = generate_timestamp()
+    adding = f'{sample}-{datetime_str}-{note}'
+
+    child_filepath = os.path.join(main_filepath, adding)
+    create_directory(child_filepath)
+
+    pstat.Setup(model=model, path_exe=path, folder=child_filepath)
+
+    # deposition start
+    print('Bulk electrolysis started.')
+    plate.start_stirring()
+    time.sleep(15)
+    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100)
+    header = 'Bulk electrolysis at potential = {:.1f}mV'.format(E_ed)
+    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-3, fileName=fileName, header=header)  # Todo
+    itcurve.ircomp(Ru=RU)  # Ru get from EIS
+    itcurve.run()
+    time.sleep(5)
+    plate.stop_stirring()
+    itcurve_data = pstat.LoadITCURVE(fileName=fileName, folder=child_filepath, model=model)
+    plt.figure()
+    plt.plot(itcurve_data.t, -itcurve_data.i / 0.0706858 * 1000)
+    plt.xlabel('$Time$ / s')
+    plt.ylabel('Current density (mA cm-2)')
+    plt.legend(title=f'E = {E_ed}')
+    plt.savefig(child_filepath + '/' + 'ITCURVE' + '.png')
+    plt.show()
+    print('Finished Bulk electrolysis\n')
+    print('Waiting 15 s')
+    time.sleep(15)
+    print('Finished waiting\n')
+    # charge = np.trapz(itcurve_data.i[:,0],itcurve_data.t)

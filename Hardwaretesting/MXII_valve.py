@@ -262,3 +262,6 @@ class MX_valve():
                 if current_port == port:
                     #self.verboseprint('Valve: "{}" moved to port {}'.format(self.name, current_port))
                     break
+
+    def __str__(self):
+        return str(self.name)
