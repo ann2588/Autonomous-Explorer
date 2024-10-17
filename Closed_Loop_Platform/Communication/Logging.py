@@ -3,7 +3,7 @@ import os
 import sys
 
 # Create log folder if it doesn't exist
-log_folder = r'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/Logfile'
+log_folder = r"C:\Users\guazh\data"
 exp_id = ""
 
 
@@ -88,6 +88,7 @@ def setup_logging_for_experiment(exp_id:str):
 
 
 #%%
+'''
 # Example Usage
 setup_logging_for_experiment('EXP0001')
 
@@ -101,3 +102,4 @@ setup_logging_for_experiment('EXP0002')
 print("Starting the second experiment.")
 print("Magnetic stirrer initialized SESSION 2.")
 print("Pump activated SESSION 2.")
+'''

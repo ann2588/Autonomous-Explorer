@@ -1,5 +1,5 @@
 import numpy as np
-import pytentiostats.chi760f as chi
+
 
 #Add LoadITCURVE tech by Yi-An Lai
 

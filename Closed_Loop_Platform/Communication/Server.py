@@ -3,7 +3,7 @@ import socket
 import logging
 import time
 import subprocess
-from Utilities.gasanalyzer import *
+from Closed_Loop_Platform.Communication.gasanalyzer import *
 
 
 def kill_port(port):
@@ -20,7 +20,7 @@ def kill_port(port):
 
 
 # Set the folder path where the log file should be stored
-log_folder = r'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/Logfile'  # You can specify an absolute path as well, like '/var/log/myapp/'
+log_folder = r"C:\Users\guazh\data"  # You can specify an absolute path as well, like '/var/log/myapp/'
 log_file = 'server.log'
 
 # Ensure the folder exists
@@ -54,6 +54,8 @@ CommandList = [
     'Check if still running'
     'Baking'
 ]
+global gc
+gc = GC_Connector()
 
 # %%
 while True:
@@ -67,7 +69,6 @@ while True:
     # Process the message and take action
     if 'Connect to GC' in message:
         logging.info("GC start to connect...")
-
         # Simulate connecting to GC
         gc = GC_Connector()  # reopen the peaksimple software before running this command
         main_folder = message.split('mainfolder: ')[1]
@@ -92,8 +93,8 @@ while True:
         filename = message.split('filename: ')[1]
         data_path = os.path.join(subfolder, filename)
         gc.update_gc_settings(data_path)
-
         # Simulate loading control files
+
         time.sleep(2)
         logging.info("GC finished loading control files.")
         response = "GC control files loaded successfully."
@@ -102,14 +103,17 @@ while True:
     elif 'Wait 180 second and start sample Injection' in message:
         logging.info("GC waiting 180 seconds before sample injection...")
         # Simulate waiting and starting sample injection
+
         time.sleep(180)  # Wait for 180 seconds
         gc.set_running()
         # Simulate waiting and starting sample injection
         logging.info("GC started sample injection.")
+
+
         response = "GC started sample injection after 180 seconds."
         logging.info("GC completed sample injection.")
 
-    elif ___ in message:
+    elif 'still' in message:
         logging.info("Checking if GC is still running")
         # Simulate waiting and starting sample injection
         while gc.is_running():

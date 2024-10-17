@@ -5,7 +5,7 @@ import socket
 import logging
 
 # Set the folder path where the log file should be stored
-log_folder = r'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/Logfile'  # You can specify an absolute path as well, like '/var/log/myapp/'
+log_folder = r"C:\Users\guazh\data"  # You can specify an absolute path as well, like '/var/log/myapp/'
 log_file = 'Communication.log'
 
 # Ensure the folder exists
