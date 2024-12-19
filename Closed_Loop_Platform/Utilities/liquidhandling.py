@@ -102,9 +102,10 @@ def select_solution_rinsing(solution_type=None, to_voir=False):
         print('Solution not found')
         return None, None, None, None
     return pump, channel, valve, port
-def pumping_waste_out(where:str = None, times = 40):
+def pumping_waste_out(where:str = None, times = 210):
+    print('Pumping waste out from cell...')
     if where == 'cell':
-        #plate.start_stirring()
+        plate.start_stirring()
         channels = [1, 2]
         rpm = 100
         for channel in channels:
@@ -120,7 +121,7 @@ def pumping_waste_out(where:str = None, times = 40):
     else:
         print('Please identify which cell you want to empty')
 
-def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '12mL'):
+def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '50mL'):
     '''
     :param where: assign 'voir' or 'cell'
     :param rinsing_solution: 'electrolyte, 'il', 'water', 'cu', 'hno3', 'regen', 'spelec'
@@ -154,7 +155,7 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
         add_solution('water', volume_add = volume_assigned)
         print('Cell rinsing completed')
     if acidrinse == True:
-        stirring(plate, 600)
+        stirring(plate = plate, stirring_time=600)
         print('Acid rinsing completed')
 def titration(element, number_of_drops, pump, valve, valve_port, pump_channel):  # to be optimized to use acid/base as little as possible
 
@@ -236,6 +237,7 @@ def Elelectrolyte_Formulation(sample:dict):
     pumping_waste_out('voir')
     Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='50mL')
     print('50 mL electrolyte added to reservoir')
+    '''
     for element, partition in sample.items():
         if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','blank']:
             if partition == 0.0:
@@ -248,6 +250,7 @@ def Elelectrolyte_Formulation(sample:dict):
                 titration_channel_rinsing(valve, stock_solution_port_a['blank'], pump, pump_channel=icca_channel['il'])
         else:
             continue
+    '''
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
 
@@ -257,11 +260,10 @@ def PlatingSolutionFormulation(sample:dict):
     Status: Pending test run
     :return
     '''
-    pumping_waste_out('cell')
-    Rinsing('cell', 'spelec', 'cu', 3, volume_assigned='50mL')
+    Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='50mL')
     print('50 mL electrolyte added to reservoir')
 
     #@@ Pending varying the cu conc.
 
-    stirring()
+    stirring(plate = plate,stirring_time = 30)
     #print('Electrolyte formulated in reservoir')

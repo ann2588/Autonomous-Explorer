@@ -5,7 +5,7 @@ from alicat import FlowMeter
 #%%
 ## Dictionary to store CO2 ratios and corresponding MFC settings
 gas_ratio = [0, 2, 8, 10, 25, 50, 75, 100]
-gas_shortname = ['N2', 'C-2', 'C-8', 'C-10', 'C-15', 'C-20', 'C-25', 'C-50', 'C-75', 'CO2']
+gas_shortname = ['Ar', 'C-2', 'C-8', 'C-10', 'C-15', 'C-20', 'C-25', 'C-50', 'C-75', 'CO2']
 #gas_dict = {el: ex for el, ex in zip(gas_shortname, gas_num)}
 
 
@@ -41,13 +41,14 @@ def control_gas_flow(flow_controller, operation='open', flow_rate=30, pressure=2
         print(f"Pressure set to {pressure}.")
     else:
         raise AssertionError('Please provide a valid command to MFC.')
-def control_co2_ar_ratio(ratio):
-    total_flow_rate = 30
-    flow_co2 = total_flow_rate * (ratio / 100)
+def control_co2_ar_ratio(co2_ratio):
+    total_flow_rate = 60
+    flow_co2 = total_flow_rate * (co2_ratio / 100)
     flow_ar = total_flow_rate - flow_co2
 
     mfc_co2.set_flow_rate(flow_co2)
     mfc_ar.set_flow_rate(flow_ar)
+    mfc_co2ar.set_flow_rate(total_flow_rate)
     print(f"CO2 flow: {flow_co2} sccm, Ar flow: {flow_ar} sccm")
 
 def close_all_gas():

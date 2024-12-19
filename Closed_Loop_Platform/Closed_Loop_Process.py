@@ -1,20 +1,20 @@
-from Utilities.liquidhandling import *
-from Utilities.gashandling import *
-from Utilities.electrochemistry import *
-from Communication.Logging import *
+#%%
+from Closed_Loop_Platform.Communication.Logging import *
 from Closed_Loop_Platform.Utilities.DoEFormatting import *
-from Communication.Client import *
+from Closed_Loop_Platform.Communication.Client import *
+from Closed_Loop_Platform.Utilities.gashandling import *
+from Closed_Loop_Platform.Utilities.liquidhandling import *
+from Closed_Loop_Platform.Utilities.electrochemistry import *
 
-# Last update: 10/09/2024
+# Last update: 12/12/2024
 # Note: The closed-loop process still requires testing
 # Test stage
 # 1: Dry run with print() to make sure the framework is alright
-# 2: Test run with instruments to check one close loop, skip the initialization first.
-# 3: Test run with
-
-doepath = "DoERandomBatch10.csv"
+# 2: Test run with instruments to check one close loop, skip the initialization first. And skip ionic liquid.
+# Purpose: to get correct data structure for at least 3 close loop
+#%%
+doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DoERandomBatch10.csv" #Todo Change the input format
 exp_dicts = doeprocess(doepath)
-
 
 #%% Macro script
 def CO2Optimizer(mainfold: str, doe:exp_dicts, initialization:True):
@@ -93,55 +93,53 @@ def CO2Optimizer(mainfold: str, doe:exp_dicts, initialization:True):
         control_co2_ar_ratio(exp['CO2ratio'])
         potential_windows = [-1.0, -1.4, -1.6, -1.8, -2.0] # Pending determining numbers of potential windows
         for voltage in potential_windows:
-            #%% Set up the client here #@@TODO
-            #Seperate the process of electrolysis and GC instead of putting in one
-            print(f"Running experiment with CO2/Ar ratio {exp['CO2ratio']}%.")
-            print('Reading value:')
-            print(f'Ar flow rate : {readpoint("mass_flow", mfc_ar)}')
-            print(f'CO2 flow rate : {readpoint("mass_flow", mfc_co2)}')
-            print(f'flow rate into GC : {readpoint("mass_flow", mfc_co2ar)}')
+            for step in range(1):
 
-            SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{voltage}")
-            bulk_electrolysis(exp_path, sample=cat, E_ed = voltage, note=f"{exp['CO2ratio']}CO2", )
-            SIGNAL = CheckSignalFromGC()
+                #Seperate the process of electrolysis and GC instead of putting in one
+                print(f"Running experiment with CO2/Ar ratio {exp['CO2ratio']}%.")
+                print('Reading value:')
+                print(f'Ar flow rate : {readpoint("mass_flow", mfc_ar)}')
+                print(f'CO2 flow rate : {readpoint("mass_flow", mfc_co2)}')
+                print(f'flow rate into GC : {readpoint("mass_flow", mfc_co2ar)}')
 
-            if SIGNAL:
-                impedence = bulk_electrolysis_beforeCP(exp_path, sample=cat, E_ed = voltage, note=f"{exp['CO2ratio']}CO2")
-                SendCommandToGC("Wait 180 second and start sample Injection")
-                bulk_electrolysis_CP(exp_path, sample=cat, RU = impedence,  E_ed = voltage, note=f"{exp['CO2ratio']}CO2", )
-
-            SIGNAL = CheckSignalFromGC()
-            if SIGNAL:
-                print(f"GC is running, waiting 7 minutes...")
-                time.sleep(560)
-            else:
-                print(f"Hey GC is not running!!!")
-                os.system(f'python {script_path} -m "GC is not running, check it out."')
-
-            SendCommandToGC("Is GC still running?")
-            # Add timeout for signal check
-            start_time = time.time()
-            timeout = 300  # Timeout after 5 minutes (300 seconds)
-            while not SIGNAL:
+                SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{exp['CO2ratio']}CO2_{voltage}_step{step+1}")
+                # Remember to change the command Read by GC
+                bulk_electrolysis(exp_path, sample=cat, E_ed = voltage, note=f"{exp['CO2ratio']}CO2_step{step+1}")
                 SIGNAL = CheckSignalFromGC()
-                if time.time() - start_time > timeout:
-                    print("Timeout: GC did not respond in time.")
-                    logging.error("GC did not respond within the timeout period.")
-                    # Take appropriate action after timeout (e.g., skip this step, alert user, etc.)
-                    os.system(f'python {script_path} -m "Timeout: GC did not respond in time."')
-                    break  # Exit the loop if GC signal wasn't received within timeout
+
+                if SIGNAL:
+                    impedence = bulk_electrolysis_beforeCP(exp_path, sample=cat, E_ed = voltage, note=f"{exp['CO2ratio']}CO2_step{step+1}")
+                    SendCommandToGC("Wait 180 second and start sample Injection")
+                    bulk_electrolysis_CP(exp_path, sample=cat, RU = impedence,  E_ed = voltage, note=f"{exp['CO2ratio']}CO2_step{step+1}")
+
+                SIGNAL = CheckSignalFromGC()
+                if SIGNAL:
+                    print(f"GC is running, waiting 7 minutes...")
+                    time.sleep(560)
+                else:
+                    print(f"Hey GC is not running!!!")
+                    os.system(f'python {script_path} -m "GC is not running, check it out."')
+
+                SendCommandToGC("Is GC still running?")
+                # Add timeout for signal check
+                start_time = time.time()
+                timeout = 300  # Timeout after 5 minutes (300 seconds)
+                while not SIGNAL:
+                    SIGNAL = CheckSignalFromGC()
+                    if time.time() - start_time > timeout:
+                        print("Timeout: GC did not respond in time.")
+                        logging.error("GC did not respond within the timeout period.")
+                        # Take appropriate action after timeout (e.g., skip this step, alert user, etc.)
+                        os.system(f'python {script_path} -m "Timeout: GC did not respond in time."')
+                        break  # Exit the loop if GC signal wasn't received within timeout
 
         close_all_gas()
         Rinsing('cell','electrolyte', 'electrolyte', 1)
 
-        # Stage 4-1: GC data processing
-
-
-
-        # Stage 4-2: Electrode Regeneration
+        # Stage 4-1: Electrode Regeneration
 
         print('Start electrode regeneration')
-        insitu_echem_regeneration(exp_path)
+        #insitu_echem_regeneration(exp_path)
         print('Finish electrode regeneration')
 
         Rinsing('cell', 'water', 'electrolyte', 3)
@@ -152,6 +150,9 @@ def CO2Optimizer(mainfold: str, doe:exp_dicts, initialization:True):
         Rinsing('voir', 'water', 'water', 3)
 
         print('Experiment completed')
+
+        #Stage 4-2: Data processing
+
         os.system(f'python {script_path} -m "{cat} completed"')
 
     # Final rinsing
@@ -164,5 +165,5 @@ def CO2Optimizer(mainfold: str, doe:exp_dicts, initialization:True):
 
 #%%%
 if __name__ == '__main__':
-   main_folder = 'Your Filename'
-   CO2Optimizer(main_folder, exp_dicts, Initialization = True)
+   main_folder = 'CloseLooptestForDataStructure'
+   CO2Optimizer(main_folder, exp_dicts, Initialization = False)

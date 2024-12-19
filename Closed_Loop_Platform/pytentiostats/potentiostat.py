@@ -36,7 +36,7 @@ def run_command_with_timer(command, filename):
     def measure_time(repeat_time):
         while process.poll() is None:  # While the process is running
             elapsed_time = time.time() - start_time
-            print(f"Elapsed Time: {elapsed_time:.2f} seconds", end='\r')
+            #print(f"Elapsed Time: {elapsed_time:.2f} seconds", end='\r')
             time.sleep(1)  # Update every 1 second
             if os.path.isfile(folder_save + '/' + filename + '.txt'):
                 time.sleep(1)

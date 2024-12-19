@@ -90,8 +90,12 @@ while True:
         gc.ctrl_file = ctrl_file
         gc.load_ctrl_file()  # Running error but actually successful
         subfolder = message.split('subfolder: ')[1].split(',')[0]
-        filename = message.split('filename: ')[1]
+        filename = 'GC'+message.split('filename: ')[1]
         data_path = os.path.join(subfolder, filename)
+        try:
+            os.makedirs(data_path, exist_ok=True)
+        except FileExistsError:
+            print(f"The directory {data_path} already exists. Continuing without creating it.")
         gc.update_gc_settings(data_path)
         # Simulate loading control files
 
@@ -100,18 +104,17 @@ while True:
         response = "GC control files loaded successfully."
         logging.info("GC completed loading control files.")
 
-    elif 'Wait 180 second and start sample Injection' in message:
+    elif 'Wait 180 second and start 2 sample Injections' in message:
         logging.info("GC waiting 180 seconds before sample injection...")
         # Simulate waiting and starting sample injection
-
+        gc.sample_set_size = 2
         time.sleep(180)  # Wait for 180 seconds
         gc.set_running()
         # Simulate waiting and starting sample injection
         logging.info("GC started sample injection.")
-
-
         response = "GC started sample injection after 180 seconds."
         logging.info("GC completed sample injection.")
+
 
     elif 'still' in message:
         logging.info("Checking if GC is still running")
@@ -122,7 +125,7 @@ while True:
         # Simulate waiting and starting sample injection
         logging.info("GC finished the experiment.")
         response = "GC finished the experiment."
-        logging.info("GC completed sample injection.")
+
 
     elif 'Baking' in message:
         logging.info("GC start baking...")

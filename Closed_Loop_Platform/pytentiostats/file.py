@@ -1,5 +1,5 @@
 import numpy as np
-
+import Closed_Loop_Platform.pytentiostats.chi760f as chi
 
 #Add LoadITCURVE tech by Yi-An Lai
 

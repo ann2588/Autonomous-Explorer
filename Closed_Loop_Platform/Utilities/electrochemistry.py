@@ -5,7 +5,7 @@ global pstat, model, path
 import os, time, datetime
 from datetime import datetime
 import matplotlib.pyplot as plt
-#from .liquidhandling import stirring, plate, Rinsing
+from .liquidhandling import stirring, plate, Rinsing
 from scipy.signal import savgol_filter
 import seaborn as sns
 import warnings
@@ -14,12 +14,13 @@ cat = str()
 # %% Basic setting
 message_completed = 'Experiment completed'
 message_stuck = 'Unusual impedence in electrolyte, Check if the tube stuck'
-script_path = "C:/Users/guazh/PycharmProjects/CO2Optimizer/slack-bot.py"
+script_path = 'C:\\Users\\guazh\\PycharmProjects\\CO2Platform\\Closed_Loop_Platform\\Utilities\\slack-bot.py'
 default_path = "C:/Users/guazh/data"
 np.errstate(divide='ignore')
 warnings.simplefilter(action='ignore', category=(FutureWarning))
 
 # CHI Setting
+global model, path
 model = 'chi760f'
 path = 'C:/chi'
 
@@ -35,12 +36,12 @@ def generate_timestamp():
     datetime_str = datetime.now().isoformat(timespec='seconds')
     return datetime_str.replace(" ", "_").replace(":", "_")
 def getOCP(child_filepath, time_ocp=5):
-    #model = 'chi760e'
-    #path = 'C:/chi'
+    model = 'chi760f'
+    path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
     print('Measuring OCP')
     ocpname = f"OCP_{generate_timestamp()}"
-    ocp = pstat.OCP(ttot=time_ocp, dt=0.01, fileName=ocpname)
+    ocp = pstat.OCP(ttot=time_ocp, dt=0.01, fileName=ocpname, header = 'OCP', )
     time.sleep(10)
     ocp.run()
     time.sleep(5)
@@ -424,7 +425,7 @@ def electrodeposition(mainpath, sample, E_ed, Time_ed, note='Deposition'):
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
-    model = 'chi760e'
+    model = 'chi760f'
     path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
@@ -695,7 +696,7 @@ def run_CV_HER_varyE(mainpath, sample, gas, sr_cv=50):
     #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
     #for idx in indices:
     #    plt.plot(cvref.E[idx], cvref[])
-def run_CV_varysr(mainpath, sample):
+def run_CV_varysr(mainpath, sample, sr_cv, Rus = None):
     """
     Run a CV experiment and save the results.
 
@@ -719,24 +720,39 @@ def run_CV_varysr(mainpath, sample):
     filename = sample
 
     # Stirring the plate for 30 seconds
+    stirring(plate)
     time.sleep(30)
     ocp_data_E = getOCP(child_filepath)
     Ru = getRu(child_filepath, ocp_data_E)
 
 
-
-    Eini, Ev1, Ev2, Efin = -0.6, -1.8, -0.6, -0.6
-    sr_cv = [1500000, 800000, 600000, 400000, 200000, 500, 100]
+    Eini, Ev1, Ev2, Efin = -0.0, -2.2, -0.0, -0.0
+    #sr_cv = [1500, 800, 500, 200, 100, 20, 10, 1]
     #Rus = [20000000000000, 15000000000000, 10000000000000, 9000000000000, 3000000000, 980]
-    Rus = [750, 750, 750, 750, 750, 750, 750]
-    senses = [1E-3, 1E-3, 1E-3, 1E-5, 1E-6, 1E-6, 1E-7]
-    for sr, sens, Ru in zip(sr_cv, senses, Rus):
+    #Rus = [750, 750, 750, 750, 750, 750, 750]
 
-        fileName = f'{filename}_CV_sr_{sr:.0f}mVs_Efin_{Ev1 * 1000:.0f}mV'
-        cvheader = f'CV ran at {sr:.0f} mVs'
+    for scan_rate, Ru in zip(sr_cv, Rus) :
+        if scan_rate < 1:
+            nSweeps_cv = 3
+        else:
+            nSweeps_cv = 6  # number of sweeps
+        dE_cv = 0.001  # V, potential increment
+        if scan_rate >= 70:
+            sens_cv = 1e-4
+        elif scan_rate >= 10:
+            sens_cv = 1e-5
+        elif scan_rate >= 1:
+            sens_cv = 1e-5  # V/A, current sensitivity
+        elif scan_rate <= 0.05:
+            sens_cv = 1e-6
+        else:
+            sens_cv = 1e-6
+
+        fileName = f'{filename}_CV_sr_{scan_rate:.0f}mVs_Efin_{Ev1 * 1000:.0f}mV'
+        cvheader = f'CV ran at {scan_rate:.0f} mVs'
         cv2 = pstat.CV(
-            Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=6, dE=0.001, sr=sr / 1000,
-            sens=senses, fileName=fileName, header=cvheader, qt=2
+            Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=nSweeps_cv, dE=0.001, sr=scan_rate,
+            sens=sens_cv, fileName=fileName, header=cvheader, qt=2
         )
         cv2.ircomp(Ru=Ru)
         time.sleep(5)
@@ -744,20 +760,25 @@ def run_CV_varysr(mainpath, sample):
         time.sleep(5)
 
         cvref = pstat.LoadCV(fileName, folder=child_filepath, model=model)
-        cvrhe = LSV_converter_inexp(cvref.E, cvref.i[:, 0])
-        #plt.plot(cvref.E, cvref.i[:, 0])
-        #plt.savefig(os.path.join(child_filepath, f"{filename}.png"))
-        plot_cv_data(cvrhe, child_filepath, fileName)
+        #cvrhe = LSV_converter_inexp(cvref.E, cvref.i[:, 0])
+
+        plt.figure(figsize=(4, 3))
+        plt.plot(cvref.E, cvref.i[:, 0])
+        # plt.xlim((-2.4,0.2))
+        # plt.ylim((-2e-5,5e-5))
+        plt.xlabel('Potential/V (vs Ag/AgCl)')
+        plt.ylabel('Current/A')
+        plt.title(f"{fileName}.png")
+        plt.tight_layout()
+        plt.savefig(os.path.join(child_filepath, f"{fileName}.png"))
+        plt.show()
+        #plot_cv_data(cvrhe, child_filepath, fileName)
         #save_cvrhe_to_txt(cvrhe, child_filepath, fileName)
 
         print(f'Finished measuring CV at {sr_cv} mV/s with Efin at {Ev1 * 1000:.0f} V')
-        #plate.stop_stirring()
+        plate.stop_stirring()
         time.sleep(15)
-    # This line didnt work, the plot should be processed later after the experiment
 
-    #indices = find_nearest_index(cvref.E, min_potential value, 0.0005)
-    #for idx in indices:
-    #    plt.plot(cvref.E[idx], cvref[])
 def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'):
     '''
     This function perform electrodeposition with designated potential and time
@@ -780,11 +801,13 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
+    model = 'chi760f'
+    path = 'C:/chi'  # Path to the chi760e.exe
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
+    filename = sample
 
-    stirring(plate, 30)
+    # Stirring the plate for 30 seconds
     time.sleep(30)
-
     ocp_data_E = getOCP(child_filepath)
     Ru = getRu(child_filepath, ocp_data_E)
 
@@ -792,10 +815,11 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'
     print('Bulk electrolysis started.')
     plate.start_stirring()
     time.sleep(15)
-    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100)
+    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100) + note
     header = 'Bulk electrolysis at potential = {:.1f}mV'.format(E_ed)
-    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-3, fileName=fileName, header=header)  # Todo
+    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, folder = child_filepath, sens=1e-3, fileName=fileName, header=header, path_exe=path)  # Todo
     itcurve.ircomp(Ru=Ru)  # Ru get from EIS
+    time.sleep(5)
     itcurve.run()
     time.sleep(5)
     plate.stop_stirring()
@@ -846,7 +870,7 @@ def bulk_electrolysis_beforeCP(mainpath, sample, E_ed, Time_ed = 300, note='Elec
 
     return Ru
 
-def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 300, note='Electrolysis'):
+def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 960, note='Electrolysis'):
     '''
     This function perform electrodeposition with designated potential and time
     :param mainpath: The dic you want to store your data
@@ -858,6 +882,7 @@ def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 300, note='Elect
     '''
     # CHI Settings
 
+
     filename = sample
     main_filepath = mainpath
     create_directory(main_filepath)
@@ -868,13 +893,15 @@ def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 300, note='Elect
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
+    model = 'chi760f'
+    path = 'C:/chi'  # Path to the chi760e.exe
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
     # deposition start
     print('Bulk electrolysis started.')
     plate.start_stirring()
     time.sleep(15)
-    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100)
+    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100) + note
     header = 'Bulk electrolysis at potential = {:.1f}mV'.format(E_ed)
     itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-3, fileName=fileName, header=header)  # Todo
     itcurve.ircomp(Ru=RU)  # Ru get from EIS

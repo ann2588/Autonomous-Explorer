@@ -8,16 +8,9 @@ from .gashandling import *
 from .electrochemistry import *
 #from .gasanalyzer import *
 
-__version__ = "0.1"
+__version__ = "0.2"
 __author__ = "Yi-An Lai"
 
-__all__ = [
-    'portaccess',
-    'liquidhandling',
-    'gashandling',
-    'electrochemistry'
-    #'gasanalyzer'
-]
 
 
 
