@@ -22,7 +22,7 @@ Additional feature for data processing and data update
 
 
 #%%
-doepath = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DoERandomBatch10.csv"
+doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DoERandomBatch10.csv"
 exp_dicts = doeprocess(doepath)
 
 
@@ -155,7 +155,7 @@ def CO2Optimizer(mainfold, doe, initialization=True):
         base_path = initialize_experiment(mainfold)
     else:
         base_path = f'C:/Users/guazh/data/{mainfold}'
-        base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
+        #base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
         create_directory(base_path)
     DPAgent.master_folder = base_path
     for expn, exp in doe.items():
@@ -179,6 +179,5 @@ def CO2Optimizer(mainfold, doe, initialization=True):
 
 # Example Usage
 main_folder = 'TestRunForDataStructure_Structure3'
-
 DPAgent = DataProcessing()
 CO2Optimizer(main_folder, exp_dicts, initialization=False)

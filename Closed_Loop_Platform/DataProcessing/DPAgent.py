@@ -9,11 +9,11 @@ import warnings
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_files
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/TestRunForDataStructure"
-calibration_file = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DataProcessing/gc_calibration.csv"
+Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/TestRunForDataStructure"
+Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\gc_calibration.csv"
 class DataProcessing:
 
-    def __init__(self, master_folder=master_folder, calibration_file = calibration_file):
+    def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
         self.master_folder = master_folder
         self.calibration_file = calibration_file
         self.exp_num = 1  # Experiment number to be used in file path construction
@@ -71,7 +71,7 @@ class DataProcessing:
             """
             Plot the catalysis current over time.
             """
-            plt.figure(figsize=(4.8, 4.8))  # Set the figure size
+            plt.figure(figsize=(3.6, 3.6))  # Set the figure size
             plt.plot(itcurve['Time second'], itcurve['Current A'], marker='o', linestyle='-', color='b')  # Plot the data
             plt.title('Catalysis Current Over Time')  # Set the title
             plt.xlabel('Time (seconds)')  # Set the x-axis label
@@ -97,6 +97,7 @@ class DataProcessing:
         
         process_asc_files(dir[0]) # this will generate 2 csv file with integral area of every peak
         os.chdir(dir[0])
+        print(os.getcwd())
         files = glob.glob(f"peak_data*")
         area_CO = 0
         area_H2 = 0
@@ -113,8 +114,9 @@ class DataProcessing:
             else:
                 continue
 
-            df = pd.read_csv(file)
-            peak_areas[peak_name] = df.loc[df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
+            print(peak_name)
+            test_df = pd.read_csv(file)
+            peak_areas[peak_name] = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
 
         conc_H2 = (peak_areas['H2 as TCD'] - self.intercept_H2) / self.slope_H2  # ppm
         conc_CO = (peak_areas['CO as FID'] - self.intercept_CO) / self.slope_CO  # ppm

@@ -63,7 +63,7 @@ def calculate_area(peaks_region, combined_corrected, combined_data, gas_regions,
         if identified_gas:
             peak_name = identified_gas
         else:
-            peak_name = f"Unknown Peak {i + 1}"
+            peak_name = f"Unknown_Peak_{i + 1}"
 
         peak_info_list.append([peak_name, peak_time, area])
 
@@ -148,7 +148,7 @@ def process_asc_files(folder_path):
         data['Intensity_1'] /= 1000  # Convert from uV to mV
 
         # Generate a unique number for the CSV filename, padded to 3 digits
-        unique_number = "TCD" if i == 1 else "FID"
+        unique_number = "FID" if i == 1 else "TCD"
         output_filename = f"peak_data_{unique_number}.csv"
 
         print(f"Analyzing {file_name} and saving results to {output_filename}...")
