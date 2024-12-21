@@ -261,7 +261,7 @@ def PlatingSolutionFormulation(sample:dict):
     :return
     '''
     Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='50mL')
-    print('50 mL electrolyte added to reservoir')
+    print('50 mL plating solution added to cell')
 
     #@@ Pending varying the cu conc.
 

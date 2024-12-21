@@ -1,6 +1,6 @@
 #%%
 from Closed_Loop_Platform.Communication.Logging import *
-from Closed_Loop_Platform.Utilities.DoEFormatting import *
+from Closed_Loop_Platform.DataProcessing.DoEFormatting import *
 from Closed_Loop_Platform.Communication.Client import *
 from Closed_Loop_Platform.Utilities.gashandling import *
 from Closed_Loop_Platform.Utilities.liquidhandling import *

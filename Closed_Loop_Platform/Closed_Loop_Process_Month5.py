@@ -1,21 +1,28 @@
 #%%
-from Closed_Loop_Platform.Communication.Logging import *
-from Closed_Loop_Platform.Utilities.DoEFormatting import *
-from Closed_Loop_Platform.Communication.Client import *
-from Closed_Loop_Platform.Utilities.gashandling import *
-from Closed_Loop_Platform.Utilities.liquidhandling import *
-from Closed_Loop_Platform.Utilities.electrochemistry import *
+import sys
+import os
+from datetime import datetime
+# Add the parent directory of Closed_Loop_Platform to the Python path
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 
-# Last update: 12/12/2024
+from Closed_Loop_Platform.Communication import *
+from Closed_Loop_Platform.DataProcessing import *
+#from Closed_Loop_Platform.Utilities import *
+
+'''
+# Last update: 12/20/2024
 # Note: The closed-loop process still requires testing
-# Test stage
-# 1: Dry run with print() to make sure the framework is alright
-# 2: Test run with instruments to check one close loop, skip the initialization first. And skip ionic liquid.
-# Purpose: to get correct data structure for at least 3 close loop
+# Update:
+The module structure updated. 
+Additional feature for data processing and data update
+
+
+'''
+
 
 #%%
-doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DoERandomBatch10.csv" #Todo Change the input format
+doepath = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DoERandomBatch10.csv"
 exp_dicts = doeprocess(doepath)
 
 
@@ -80,7 +87,7 @@ def run_experiment(exp, exp_path, expn):
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
     control_co2_ar_ratio(exp['CO2ratio'])
 
-    potential_windows = [-1.0, -1.4, -1.6, -1.8, -2.0]  # Pending determination
+    potential_windows = [-1.6]  # Pending determination
 
     for voltage in potential_windows:
         execute_bulk_electrolysis(exp, exp_path, expn, voltage)
@@ -148,20 +155,30 @@ def CO2Optimizer(mainfold, doe, initialization=True):
         base_path = initialize_experiment(mainfold)
     else:
         base_path = f'C:/Users/guazh/data/{mainfold}'
-
+        base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
+        create_directory(base_path)
+    DPAgent.master_folder = base_path
     for expn, exp in doe.items():
         subfold = f"{datetime.now().strftime('%Y-%m-%d')}-{expn}"
         exp_path = f"{base_path}/{subfold}"
         create_directory(exp_path)
-        run_experiment(exp, exp_path, expn)
+        #run_experiment(exp, exp_path, expn)
+        print(expn)
+        print(exp)
+        DPAgent.exp_num = int(expn[3:])  # Extract the number from the EXPXXXX format and convert to integer
+        print(DPAgent.exp_num)
+        DPAgent.encode(exp)
+
 
     # Final rinsing
     #Rinsing('cell', 'water', 'water', 3)
 
     print('Experiment completed')
-    os.system(f'python {script_path} -m "{message_completed}"')
+    #os.system(f'python {script_path} -m "{message_completed}"')
 
 
 # Example Usage
-main_folder = 'TestRunForDataStructure_Structure2'
-CO2Optimizer(main_folder, exp_dicts, initialization=True)
+main_folder = 'TestRunForDataStructure_Structure3'
+
+DPAgent = DataProcessing()
+CO2Optimizer(main_folder, exp_dicts, initialization=False)

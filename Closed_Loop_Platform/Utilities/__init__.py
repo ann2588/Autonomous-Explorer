@@ -8,7 +8,7 @@ from .gashandling import *
 from .electrochemistry import *
 #from .gasanalyzer import *
 
-__version__ = "0.2"
+__version__ = "0.3"
 __author__ = "Yi-An Lai"
 
 
