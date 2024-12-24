@@ -69,14 +69,15 @@ def getRu(child_filepath, ocp_data_E):
     print('Finished waiting\n')
     return Ru
 
-def LSV_converter_inexp(potential, current, phosphate=False):
+def LSV_converter_inexp(potential, current, bicarbonate=False):
     '''
     Convert LSV from Ag/AgCl to RHE scale
     '''
-    evsrhe = potential + 0.205 + (7.6 if phosphate else 13.7) * 0.059
-    currend = -current / 0.0706858 * 1000  # for Pt disk
+    evsrhe = potential + 0.205 + (6.8 if bicarbonate else 13.7) * 0.059
+    currend = -current * 2 * 1000  # for 1 cm2 plate. Both side. Unit mA cm-2
     # Todo write a file exported as txt.
     return {'potential_RHE': evsrhe, 'current_density': currend}
+
 def LSV_getoverpotential(x, y, criteria):
     '''
     input: LSV curve
@@ -86,6 +87,7 @@ def LSV_getoverpotential(x, y, criteria):
     smoothed_y = savgol_filter(y, window_length=5, polyorder=3, mode='nearest')
     #plt.plot(smoothed_x, smoothed_y)
     return np.interp(criteria, smoothed_y, smoothed_x)
+
 def plot_cv_data(cvrhe, filepath, filename, xlim=None, ylim=None):
     """
     This function plots the CV data.
@@ -133,6 +135,7 @@ def run_ca(time=120, Hz=1, sensitivity=1e-3):
     ca = pstat.CA(Estep=1, Ehigh=1, Elow=-1.5, dt=0.1, ttot=1 / Hz, sens=sensitivity, fileName=caname, header=caheader, tstep=time + 1)
     ca.run()
     return caname
+
 def LSV_HER(mainpath, sample, note='LSVinKOH', criteria_current=10):
     '''
     This function do LSV scan automatically and extend potential until the max reach 10mA cm-2 #Todo
@@ -152,7 +155,7 @@ def LSV_HER(mainpath, sample, note='LSVinKOH', criteria_current=10):
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
-    #model = 'chi760e'
+    #model = 'chi760f'
     #path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
@@ -235,7 +238,9 @@ def LSV_HER(mainpath, sample, note='LSVinKOH', criteria_current=10):
                 f'Maximum current density = {max_current}  < {criteria_current} mA. extend the potential window to {Efin_LSV}')
     plt.show()
     return eta
-def LSV_Regeneration(mainpath, sample, note='LSVinPhos', Efin_LSV=-2.1, current_criteria=5):
+
+
+def LSV_Regeneration(mainpath, sample, note='LSVinHCO3', Efin_LSV=-2.1, current_criteria=5):
     ''' #Todo merge it with the LSV_HER(), there are basically the same with different parameters
     This function run LSV scan automatically and extend potential until the current reach current_criteria mA cm-2 #Todo
     :param mainpath: The path to store the data
@@ -254,7 +259,7 @@ def LSV_Regeneration(mainpath, sample, note='LSVinPhos', Efin_LSV=-2.1, current_
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
-    model = 'chi760e'
+    model = 'chi760f'
     path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
 
@@ -327,7 +332,8 @@ def LSV_Regeneration(mainpath, sample, note='LSVinPhos', Efin_LSV=-2.1, current_
 
     # onset = onset-0.205-7.6*0.059 #convert V vs. RHE back to V vs. Ag/AgCl scale
     return onset  # in RHE scale
-def LSV_fixrange(mainpath:str, sample:str, note='LSVinPhos', Efin_LSV=-2.3):
+
+def LSV_fixrange(mainpath:str, sample:str, note='LSVinHCO3', Efin_LSV=-2.3):
     '''
     This function do LSV scan automatically within fix potential range [-0.9, -2.3]
     :param mainpath: The path to store the data
@@ -403,6 +409,8 @@ def LSV_fixrange(mainpath:str, sample:str, note='LSVinPhos', Efin_LSV=-2.3):
     plt.savefig(child_filepath + '/' + fileName + '.png')
     plt.show()
     return onsetP
+
+
 def electrodeposition(mainpath, sample, E_ed, Time_ed, note='Deposition'):
     '''
     This function perform electrodeposition with designated potential and time
@@ -459,7 +467,9 @@ def electrodeposition(mainpath, sample, E_ed, Time_ed, note='Deposition'):
     time.sleep(15)
     print('Finished waiting\n')
     # charge = np.trapz(itcurve_data.i[:,0],itcurve_data.t)
-def insitu_echem_regeneration(mainpath: str):
+
+
+def insitu_echem_regeneration_HER(mainpath: str):
     '''
     This function perform electrode regeneration by following procedure
     1. Rinsing Cell with water and 50 mM phosphate buffer
@@ -476,7 +486,7 @@ def insitu_echem_regeneration(mainpath: str):
     :return: None
     :Todo:
     '''
-    model = 'chi760e'
+    model = 'chi760f'
     path = 'C:/chi'  # Folder where the chi760e.exe is located #Todo
     pstat.Setup(model=model, path_exe=path, folder=mainpath)
     Rinsing('water', 'phosphate', 1)
@@ -538,6 +548,62 @@ def insitu_echem_regeneration(mainpath: str):
     # print(eta)
     # if eta < -1.5:
     #    print(f'Onset potential {eta} V vs. RHE lower than criteria -1.6 V vs RHE in KOH. Please check the electrode')
+
+
+def insitu_echem_regeneration(mainpath: str):
+    '''
+    This function performs electrode regeneration by following procedure:
+    1. Rinsing Cell with water and electrolyte
+    2. Recording LSV in electrolyte under N2 as criteria for Pre-Regeneration with 5 mA as current criteria
+    3. Rinsing cell with 5 M HNO3 and stirring for 20 minutes
+    4. Changing solvent to electrolyte and recording LSV again to check the criteria after 1 acid rinse
+    5. If the onset potential at 5 mA difference < 0.01 V, current has converged. If not, repeat step 3
+    6. If the onset potential @ 5 mA cm-2 < criteria -1.5 V vs. RHE, the catalyst has been removed. If not, current has converged but potential not reached criteria, repeat step 3 again.
+    7. If rinse_times > 3, the catalyst cannot be removed by regeneration protocol. Error report. and (Supposedly) break function.
+    '''
+
+    Rinsing('cell', 'water', 'electrolyte', 3, volume_assigned='50mL')
+    LSV_Regeneration(mainpath, f'Pre-Regen', current_criteria=2, Efin_LSV=-1.9)
+    print('Electrode Regeneration start...')
+    rinse_times = 1
+    onset_array = []
+    while rinse_times <= 5:
+        Rinsing('water', 'hno3', acidrinse=True, repetitions=1)
+        Rinsing('water', 'electrolyte', 1)
+        onset = LSV_Regeneration(mainpath, f'{rinse_times}acid', current_criteria=2)
+        onset_array.append(onset)
+        print('onset_array: ', onset_array)
+        bkg_array = []
+        Converged = True
+        while Converged:
+            bkg = LSV_fixrange(mainpath, f'{rinse_times}acid', Efin_LSV=-2.3)
+            bkg_array.append(bkg)
+            print('bkg_array: ', bkg_array)
+            if len(bkg_array) >= 2 and abs((bkg_array[-1] - bkg_array[-2])) <= 0.01:
+                Converged = False
+                print('Current difference: ', (bkg_array[-1] - bkg_array[-2]))
+                print('Current decay converged. Check the Onset potential again')
+            elif rinse_times > 3:
+                print('Error: Current didn\'t converge. Check the status of electrode or rinsed by acid again')
+                break
+        post_onset = LSV_Regeneration(mainpath, f'Post-Regen{rinse_times}', Efin_LSV=-2.3, current_criteria=2)
+        onset_array.append(post_onset)
+        print('Onset array : ', onset_array)
+        e_criteria = -1.5
+        if post_onset <= e_criteria or post_onset == 0:
+            print(f'Onset potential at 1 mA is {post_onset} V vs Ag/AgCl. reaching minimum. Electrode Regeneration completed')
+            break
+        elif post_onset == 0:
+            print('Onset potential cannot reach 1 mA at -2.5 V vs Ag/AgCl. Electrode inert enough. Electrode Regeneration completed')
+        else:
+            rinse_times += 1
+            print(f'Onset potential {post_onset} didnt reach minimum. Rinsed by acid again')
+            if rinse_times == 3:
+                print(f'Error: Catalyst cannot be removed by regeneration protocol. Please check the electrode')
+
+
+
+
 def run_CV_HER_lowE(mainpath, sample, Note, sr_cv=50):
     """
     Run a CV experiment and save the results.

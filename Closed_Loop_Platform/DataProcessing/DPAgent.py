@@ -6,11 +6,12 @@ import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
+
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_files
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/TestRunForDataStructure"
-Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\gc_calibration.csv"
+Calibration_file = glob.glob(r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration*")[0]
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -160,6 +161,8 @@ class DataProcessing:
             'FEH2': FEH2
         }
 
+        bulk_electrolysis_potential = -1.6
+
         if self.database.empty:
             self.database = pd.DataFrame([new_row_data])
         else:
@@ -169,6 +172,8 @@ class DataProcessing:
                 self.database.loc[self.database['ExpID'] == id, list(new_row_data.keys())] = list(new_row_data.values())
         
         self.database.to_csv(os.path.join(self.master_folder,'experiment_data.csv'), index=False)
+
+        return bulk_electrolysis_potential, current, FECO
 
 '''
 DataAgent = DataProcessing(master_folder, calibration_file)

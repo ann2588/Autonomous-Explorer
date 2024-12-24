@@ -76,7 +76,7 @@ def analyze_intensity(data, column_name, output_filename):
         "O2 as TCD": (93.42, 109.44),
         "N2 as TCD": (118.44, 172.02),
         "CH4 as FID 1": (193.2, 235.44),
-        "CO as FID": (296.4, 333.36)
+        "CO as FID": (280.4, 333.36)
     }
 
     gas_regions_region2 = {
@@ -125,8 +125,12 @@ def analyze_intensity(data, column_name, output_filename):
 
 
 def process_asc_files(folder_path):
-    # Specify the folder containing the ASC files
-    # Pending generalizing according to folder format
+    '''
+    This function process the TCD and FID signal under passed folder. 
+    Generate 
+
+
+    '''
     asc_files = [f for f in os.listdir(folder_path) if f.endswith('.ASC')]
     print(asc_files)
 
@@ -148,7 +152,7 @@ def process_asc_files(folder_path):
         data['Intensity_1'] /= 1000  # Convert from uV to mV
 
         # Generate a unique number for the CSV filename, padded to 3 digits
-        unique_number = "FID" if i == 1 else "TCD"
+        unique_number = "FID" if file_name.find("FID") != -1 else "TCD"
         output_filename = f"peak_data_{unique_number}.csv"
 
         print(f"Analyzing {file_name} and saving results to {output_filename}...")

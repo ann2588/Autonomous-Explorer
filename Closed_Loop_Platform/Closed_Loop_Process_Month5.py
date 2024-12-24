@@ -8,17 +8,44 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from Closed_Loop_Platform.Communication import *
 from Closed_Loop_Platform.DataProcessing import *
+from Closed_Loop_Platform.BOtorchV2 import *
 #from Closed_Loop_Platform.Utilities import *
 
+
+
 '''
-# Last update: 12/20/2024
+# Last update: 12/23/2024
 # Note: The closed-loop process still requires testing
 # Update:
-The module structure updated. 
-Additional feature for data processing and data update
 
 
 '''
+
+#%% Machine Learning Agent setup
+objectives = {
+    "bulk_electrolysis_potential": ObjectiveProperties(minimize=True),
+    "current_density": ObjectiveProperties(minimize=False),
+    "FE_CO": ObjectiveProperties(minimize=False),
+}
+
+# Initialize manager
+manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objectives=objectives)
+
+# Define thresholds using metric variables after experiment setup
+thresholds = [
+    ObjectiveThreshold(metric=manager.metric_bulk_electrolysis, bound=-1.0, relative=False),
+    ObjectiveThreshold(metric=manager.metric_current_density, bound=20.0, relative=False),
+    ObjectiveThreshold(metric=manager.metric_fe_co, bound=0.9, relative=False),
+]
+
+# Apply thresholds to the optimization config
+manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationConfig(
+    objective=manager.ax_client.experiment.optimization_config.objective,
+    objective_thresholds=thresholds,
+)
+
+# Load data
+manager.load_initial_data("experimental_conditions.csv", "updated_objective_data.csv")
 
 
 #%%
@@ -44,20 +71,16 @@ def initialize_experiment(mainfold):
     time.sleep(30)
 
     SIGNAL = CheckSignalFromGC()
-
     # Ask human to check if the current platform is connected to the server (Y/N?)
 
-    #print('Start electrode initialization')
-    #insitu_echem_regeneration(initial_path) #Todo Change this protocol
-    #Rinsing('water', 'hno3', acidrinse=True, repetitions=1)
-    #print('Finish electrode initialization')
-    #Rinsing('cell', 'water', 'electrolyte', 3)
+    print('Start electrode initialization')
+    insitu_echem_regeneration(initial_path) #Todo Change this protocol
+    print('Finish electrode initialization')
     #control_co2_ar_ratio(0)  # Purge Ar into Cell to degas
     #print('Check electrode Activity')
     #run_CV_HER_varyE(initial_path, sample='Initial', gas='ArKOH', sr_cv=50)
 
     return base_path
-
 
 def run_experiment(exp, exp_path, expn):
     """Runs individual experiment based on given parameters."""
@@ -93,15 +116,13 @@ def run_experiment(exp, exp_path, expn):
         execute_bulk_electrolysis(exp, exp_path, expn, voltage)
 
     print('Start electrode regeneration')
-    #insitu_echem_regeneration(exp_path)
-    #Rinsing('cell', 'water', 'HNO3', 1, acidrinse=True)
+    insitu_echem_regeneration(exp_path)
     print('Finish electrode regeneration')
 
-    #Rinsing('cell', 'water', 'electrolyte', 3)
+    Rinsing('cell', 'water', 'water', 1)
     plate.start_stirring()
     time.sleep(60)
-    #LSV_HER(exp_path, 'RegeneratedGCE', criteria_current=10)
-    #Rinsing('voir', 'water', 'water', 3)
+    Rinsing('voir', 'water', 'water', 1)
 
     print('Experiment completed')
 
@@ -159,22 +180,35 @@ def CO2Optimizer(mainfold, doe, initialization=True):
         create_directory(base_path)
     DPAgent.master_folder = base_path
     for expn, exp in doe.items():
+        next_experiment = manager.update() #suggest next experiment
+        # Display the fetched parameters
+        print(f"Next trial fetched: {next_experiment}")
+
         subfold = f"{datetime.now().strftime('%Y-%m-%d')}-{expn}"
         exp_path = f"{base_path}/{subfold}"
         create_directory(exp_path)
         #run_experiment(exp, exp_path, expn)
+
         print(expn)
         print(exp)
         DPAgent.exp_num = int(expn[3:])  # Extract the number from the EXPXXXX format and convert to integer
         print(DPAgent.exp_num)
-        DPAgent.encode(exp)
+        bulk_electrolysis_potential, current_density, FECO = DPAgent.encode(exp) # Data processing
+        manager.ax_client.complete_trial(
+            trial_index=int(expn[3:]),  # Use the iteration index as the trial index
+            raw_data={
+                "bulk_electrolysis_potential": (bulk_electrolysis_potential, None),  # Provide the value and its variance (None here)
+                "current_density": (current_density, None), 
+                "FE_CO": (FECO, None)
+            }
+        ) 
 
 
     # Final rinsing
-    #Rinsing('cell', 'water', 'water', 3)
+    Rinsing('cell', 'water', 'water', 3)
 
     print('Experiment completed')
-    #os.system(f'python {script_path} -m "{message_completed}"')
+    os.system(f'python {script_path} -m "{message_completed}"')
 
 
 # Example Usage
