@@ -120,55 +120,42 @@ def DataProcessing(path = str):
         os.chdir('..')
 
     df = pd.DataFrame(data, columns=['Concentration', 'Peak Area H2', 'Peak Area CO'])
-    df['Concentration'] = df['Concentration'] * 0.1 *10000  # Convert from % to ppm
     df = df.sort_values(by='Concentration')
 
     from scipy.stats import linregress
     import matplotlib.pyplot as plt
     from datetime import datetime
 
-    # Perform linear regression for high concentration (from 20)
-    high_conc_df = df[df['Concentration'] >= 20]
-    slope_high, intercept_high, r_value_high, p_value_high, std_err_high = linregress(high_conc_df['Concentration'], high_conc_df['Peak Area CO'])
-    print(f"High Concentration Slope: {slope_high}, Intercept: {intercept_high}, R^2: {r_value_low**2:.2f}")
+    # Perform linear regression for the whole concentration range for both H2 and CO
+    slope_H2, intercept_H2, r_value_H2, p_value_H2, std_err_H2 = linregress(df['Concentration'], df['Peak Area H2'])
+    slope_CO, intercept_CO, r_value_CO, p_value_CO, std_err_CO = linregress(df['Concentration'], df['Peak Area CO'])
+    print(f"Slope H2: {slope_H2}, Intercept H2: {intercept_H2}, R^2 H2: {r_value_H2**2:.2f}")
+    print(f"Slope CO: {slope_CO}, Intercept CO: {intercept_CO}, R^2 CO: {r_value_CO**2:.2f}")
 
-    # Plot the result for high concentration
+    # Plot the result for the whole concentration range for both H2 and CO
     plt.figure(figsize=(3.6, 3.6))
-    plt.scatter(high_conc_df['Concentration'], high_conc_df['Peak Area CO'])
-    plt.plot(high_conc_df['Concentration'], intercept_high + slope_high*high_conc_df['Concentration'], 'r')
+    plt.scatter(df['Concentration'], df['Peak Area H2'], label='H2')
+    plt.scatter(df['Concentration'], df['Peak Area CO'], label='CO')
+    plt.plot(df['Concentration'], intercept_H2 + slope_H2*df['Concentration'], 'r', label='H2 Regression')
+    plt.plot(df['Concentration'], intercept_CO + slope_CO*df['Concentration'], 'b', label='CO Regression')
     plt.xlabel('Concentration (ppm)')
-    plt.ylabel('Peak Area CO')
-    plt.text(0.05, 0.95, f"Slope: {slope_high:.2f}\nIntercept: {intercept_high:.2f}\nR^2: {r_value_low**2:.2f}", transform=plt.gca().transAxes, fontsize=10, ha='left', va='top')
-    plt.title('Linear Regression of Peak Area CO over Concentration (High)')
-    plt.savefig('LR_high.png', dpi = 600)
+    plt.ylabel('Peak Area')
+    plt.legend()
+    plt.text(0.05, 0.95, f"H2 Slope: {slope_H2:.2f}\nH2 Intercept: {intercept_H2:.2f}\nH2 R^2: {r_value_H2**2:.2f}\nCO Slope: {slope_CO:.2f}\nCO Intercept: {intercept_CO:.2f}\nCO R^2: {r_value_CO**2:.2f}", transform=plt.gca().transAxes, fontsize=10, ha='left', va='top')
+    plt.title('Linear Regression of Peak Area over Concentration (Whole Range)')
+    plt.savefig('LR_whole_range.png', dpi = 600)
     plt.show()
 
-    # Perform linear regression for low concentration (below 20)
-    low_conc_df = df[df['Concentration'] < 20]
-    slope_low, intercept_low, r_value_low, p_value_low, std_err_low = linregress(low_conc_df['Concentration'], low_conc_df['Peak Area CO'])
-    print(f"Low Concentration Slope: {slope_low}, Intercept: {intercept_low}, R^2: {r_value_low**2:.2f}")
-
-    # Plot the result for low concentration
-    plt.figure(figsize=(3.6, 3.6))
-    plt.scatter(low_conc_df['Concentration'], low_conc_df['Peak Area CO'])
-    plt.plot(low_conc_df['Concentration'], intercept_low + slope_low*low_conc_df['Concentration'], 'r')
-    plt.xlabel('Concentration (ppm)')
-    plt.ylabel('Peak Area CO')
-    plt.text(0.05, 0.95, f"Slope: {slope_high:.2f}\nIntercept: {intercept_high:.2f}\nR^2: {r_value_low**2:.2f}", transform=plt.gca().transAxes, fontsize=10, ha='left', va='top')
-    plt.title('Linear Regression of Peak Area CO over Concentration (Low)')
-    plt.savefig('LR_low.png', dpi = 600)
-    plt.show()
-
-    # Store the slope and intercept for both high and low concentrations in another CSV
+    # Store the slope and intercept for the whole concentration range in another CSV for both H2 and CO
     calibration_data = pd.DataFrame({
-        'High Concentration Slope': [slope_high],
-        'High Concentration Intercept': [intercept_high],
-        'Low Concentration Slope': [slope_low],
-        'Low Concentration Intercept': [intercept_low]
+        'Slope H2': [slope_H2],
+        'Intercept H2': [intercept_H2],
+        'Slope CO': [slope_CO],
+        'Intercept CO': [intercept_CO]
     })
     datetime_str = datetime.now().strftime('%Y-%m-%d')
     calibration_filename = f"GC calibration - {datetime_str}.csv"
-    calibration_data.insert(0, "Compound", "CO")
+    calibration_data.insert(0, "Compound", ["H2", "CO"])
     calibration_data.to_csv(calibration_filename, index=False)
     print(f"Calibration data saved to {calibration_filename}")
     cali_file_path = "/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DataProcessing"
