@@ -1,14 +1,13 @@
 #%%
 from Closed_Loop_Platform.Utilities.gashandling import *
-#from Closed_Loop_Platform.Communication.gasanalyzer import *
+from Closed_Loop_Platform.Communication.gasanalyzer import *
 
 
 #%%
 import sys, glob, os
-#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import * 
 
-#@@ Todo: Baking method configuration
 #%% Parameter setting
 main_folder = '2024-12-24_wholerange2'  # Enter the name of your folder
 gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1, 0.5, 0.2, 0.05, 0.01] #Enter the ratio you want to try in list
@@ -122,6 +121,7 @@ def DataProcessing(path = str):
 
     df = pd.DataFrame(data, columns=['Concentration', 'Peak Area H2', 'Peak Area CO'])
     df = df.sort_values(by='Concentration')
+    df['Concentration'] = df['Concentration']*0.01*10000*0.1
 
     from scipy.stats import linregress
     import matplotlib.pyplot as plt
@@ -134,35 +134,39 @@ def DataProcessing(path = str):
     print(f"Slope CO: {slope_CO}, Intercept CO: {intercept_CO}, R^2 CO: {r_value_CO**2:.2f}")
 
     # Plot the result for the whole concentration range for both H2 and CO
-    fig, (ax1, ax2) = plt.subplots(2, 1, figsize=(3.6, 7.2))
-    ax1.scatter(df['Concentration'], df['Peak Area H2'], label='H2')
-    ax1.scatter(df['Concentration'], df['Peak Area CO'], label='CO')
-    ax1.plot(df['Concentration'], intercept_H2 + slope_H2*df['Concentration'], 'r', label='H2 Regression')
-    ax1.set_xlabel('Concentration (ppm)')
-    ax1.set_ylabel('Peak Area')
-    ax1.legend()
-    ax1.text(0.05, 0.95, f"H2 Slope: {slope_H2:.2f}\nH2 Intercept: {intercept_H2:.2f}\nH2 R^2: {r_value_H2**2:.2f}\nCO Slope: {slope_CO:.2f}\nCO Intercept: {intercept_CO:.2f}\nCO R^2: {r_value_CO**2:.2f}", transform=ax1.transAxes, fontsize=10, ha='left', va='top')
-    ax1.set_title('Linear Regression of CO over Concentration (Whole Range)')
-
-    ax2.plot(df['Concentration'], intercept_CO + slope_CO*df['Concentration'], 'b', label='CO Regression')
-    ax2.set_xlabel('Concentration (ppm)')
-    ax2.set_ylabel('Peak Area')
-    ax2.legend()
-    ax2.text(0.05, 0.95, f"CO Slope: {slope_CO:.2f}\nCO Intercept: {intercept_CO:.2f}\nCO R^2: {r_value_CO**2:.2f}", transform=ax2.transAxes, fontsize=10, ha='left', va='top')
-    ax2.set_title('Linear Regression of H2 over Concentration (Whole Range)')
-    plt.savefig('LR_whole_range.png', dpi = 600)
+    plt.figure(figsize=(3.6, 3.6))
+    plt.scatter(df['Concentration'], df['Peak Area CO'], label='CO')
+    plt.plot(df['Concentration'], intercept_CO + slope_CO * df['Concentration'], 'b', label='CO Regression')
+    plt.xlabel('Concentration (ppm)')
+    plt.ylabel('Peak Area')
+    plt.legend()
+    plt.text(0.1, 0.1, f"CO Slope: {slope_CO: .2f}\nCO Intercept: {intercept_CO: .2f}\nCOR ^ 2: {r_value_CO ** 2: .2f}")
+    plt.title('Linear Regression of CO Peak Area over Concentration')
+    plt.savefig('LR_whole_range_CO.png', dpi = 600)
     plt.show()
+
+    # Plot the result for the whole concentration range for both H2 and CO
+    plt.figure(figsize=(3.6, 3.6))
+    plt.scatter(df['Concentration'], df['Peak Area H2'], label='H2')
+    plt.plot(df['Concentration'], intercept_H2 + slope_H2 * df['Concentration'], 'r', label='H2 Regression')
+    plt.xlabel('Concentration (ppm)')
+    plt.ylabel('Peak Area')
+    plt.legend()
+    plt.text(0.1, 0.1, f"H2 Slope: {slope_H2:.2f}\nH2 Intercept: {intercept_H2:.2f}\nH2 R^2: {r_value_H2 ** 2:.2f}")
+    plt.title('Linear Regression of H2 Peak Area over Concentration')
+    plt.savefig('LR_whole_range_H2.png', dpi=600)
+    plt.show()
+
+
 
     # Store the slope and intercept for the whole concentration range in another CSV for both H2 and CO
     calibration_data = pd.DataFrame({
-        'Slope H2': [slope_H2],
-        'Intercept H2': [intercept_H2],
-        'Slope CO': [slope_CO],
-        'Intercept CO': [intercept_CO]
+        'Compound': ['H2', 'CO'],
+        'Slope': [slope_H2, slope_CO],
+        'Intercept': [intercept_H2, intercept_CO]
     })
     datetime_str = datetime.now().strftime('%Y-%m-%d')
     calibration_filename = f"GC calibration - {datetime_str}.csv"
-    calibration_data.insert(0, "Compound", ["H2", "CO"])
     calibration_data.to_csv(calibration_filename, index=False)
     print(f"Calibration data saved to {calibration_filename}")
     cali_file_path = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing"
@@ -175,7 +179,7 @@ def DataProcessing(path = str):
 if __name__ == "__main__":
     main_folder = '2024-12-24_wholerange2'  # Enter the name of your folder
     data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
-    gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1, 0.5, 0.2, 0.05, 0.01] #Enter the ratio you want to try in list
+    gas_ratio = [100, 90, 80, 60, 40, 20, 10] #Enter the ratio you want to try in list
     #start_measuring_calibration_curve(data_path = data_path)
 
     #% Experiment Finished. Start baking the column
