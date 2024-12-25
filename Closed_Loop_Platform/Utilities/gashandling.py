@@ -42,7 +42,7 @@ def control_gas_flow(flow_controller, operation='open', flow_rate=30, pressure=2
     else:
         raise AssertionError('Please provide a valid command to MFC.')
 def control_co2_ar_ratio(co2_ratio):
-    total_flow_rate = 60
+    total_flow_rate = 30
     flow_co2 = total_flow_rate * (co2_ratio / 100)
     flow_ar = total_flow_rate - flow_co2
 

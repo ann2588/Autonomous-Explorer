@@ -11,7 +11,7 @@ from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_fi
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/TestRunForDataStructure"
-Calibration_file = glob.glob(r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration*")[0]
+Calibration_file = glob.glob(r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration*")
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):

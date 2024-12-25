@@ -1,20 +1,21 @@
 #%%
-from Utilities.gashandling import *
-from Utilities.gasanalyzer import *
+from Closed_Loop_Platform.Utilities.gashandling import *
+#from Closed_Loop_Platform.Communication.gasanalyzer import *
+
 
 #%%
-import sys, glob
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+import sys, glob, os
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import * 
 
 #@@ Todo: Baking method configuration
 #%% Parameter setting
-main_folder = '2024-09-24_lowconc' #Enter the name of your folder
-gas_ratio = [0.01, 0.1, 0.2] #Enter the ratio you want to try in list
+main_folder = '2024-12-24_wholerange2'  # Enter the name of your folder
+gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1, 0.5, 0.2, 0.05, 0.01] #Enter the ratio you want to try in list
 
 #%% GC method setting
 gc = GC_Connector() #reopen the peaksimple software before running this command
-data_path = f'C:\\Peak498Win10\\GCDATA\\{main_folder}' #Update your folder here
+data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
 os.makedirs(data_path, exist_ok=True)
 gc.update_gc_settings(data_path)
 
@@ -34,7 +35,7 @@ def start_measuring_calibration_curve(data_path = data_path):
         for co2ratio in gas_ratio:
 
             print(f"Setting CO2/Ar ratio to {co2ratio}%")
-            datapath = os.path.join(data_path, f'ratio_{co2ratio}')
+            datapath = os.path.join(data_path, f'{co2ratio}')
             os.makedirs(datapath, exist_ok=True)
             gc.update_gc_settings(datapath)
 
@@ -92,12 +93,12 @@ def DataProcessing(path = str):
     7. Save the slope and intercept and r square in different csv file.
     '''
     os.chdir(data_path)
-    folders = [folder for folder in os.listdir() if folder != ".DS_Store" and not folder.endswith('.png') and not folder.endswith('.csv')]
+    folders = [folder for folder in os.listdir() if folder != ".DS_Store" and folder != "Archive" and not folder.endswith('.png') and not folder.endswith('.csv')]
     for folder in folders:
         process_asc_files(folder)
         os.chdir(data_path)
     data = []
-    for folder in folders: 
+    for folder in folders:
         os.chdir(folder)
         files = glob.glob(f"peak_data*")
         peak_areas = {
@@ -107,7 +108,7 @@ def DataProcessing(path = str):
 
         for file in files:
             if "TCD" in file:
-                continue  # Skip H2 as TCD
+                peak_name = 'H2 as TCD'
             elif "FID" in file:
                 peak_name = 'CO as FID'
             else:
@@ -158,7 +159,7 @@ def DataProcessing(path = str):
     calibration_data.insert(0, "Compound", ["H2", "CO"])
     calibration_data.to_csv(calibration_filename, index=False)
     print(f"Calibration data saved to {calibration_filename}")
-    cali_file_path = "/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DataProcessing"
+    cali_file_path = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing"
     calibration_data.to_csv(os.path.join(cali_file_path, calibration_filename), index = False)
     
     
@@ -166,21 +167,21 @@ def DataProcessing(path = str):
     
 #%%
 if __name__ == "__main__":
-    main_folder = '2024-09-24_lowconc'  # Enter the name of your folder
-    gas_ratio = [0.01, 0.1, 0.2]  # Enter the ratio you want to try in list
-    #start
-    start_measuring_calibration_curve(data_path = data_path)
+    main_folder = '2024-12-24_wholerange2'  # Enter the name of your folder
+    data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
+    gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1, 0.5, 0.2, 0.05, 0.01] #Enter the ratio you want to try in list
+    #start_measuring_calibration_curve(data_path = data_path)
 
     #% Experiment Finished. Start baking the column
-    baking_ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0622-2019_270C_50min_baking.CON" #The folder path of your baking method
-    #@@ Todo check the setting of channel 2 temperature log file
-    print('Experiment Finished. Start baking the column.')
-    gc.ctrl_file = baking_ctrl_file
-    gc.load_ctrl_file()
-    gc.set_running()
-    time.sleep(3000)
-    while gc.is_running():
-        print('Still baking. Wait for another minute.')
-        time.sleep(60)
+    #baking_ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0622-2019_270C_50min_baking.CON" #The folder path of your baking method
+    #print('Experiment Finished. Start baking the column.')
+    #gc.ctrl_file = baking_ctrl_file
+    #gc.load_ctrl_file()
+    #gc.set_running()
+    #time.sleep(3000)
+    #while gc.is_running():
+    #    print('Still baking. Wait for another minute.')
+    #    time.sleep(60)
+    DataProcessing(data_path)
     script_path = "/Closed_Loop_Platform/Utilities/slack-bot.py"
     os.system(f'python {script_path} -m "Baking completed. Please turn off FID manually"')
