@@ -1,5 +1,4 @@
-from .portaccess import *
-from .gashandling import *
+from Utilities import *
 from ika.magnetic_stirrer import MagneticStirrer
 from ismatec.peristaltic_pump import RegloICCFourChannel
 from Closed_Loop_Platform.Hardwaretesting import MXII_valve as mxii
@@ -124,6 +123,19 @@ def pumping_waste_out(where:str = None, times = 210):
     else:
         print('Please identify which cell you want to empty')
 
+def add_solution(solution_type, volume_add, seconds = None, to_voirs = False):
+    plate.start_stirring()
+    pump, channel, valve, port = select_solution_rinsing(solution_type, to_voir=to_voirs)
+    changing_port(valve, port)
+    if seconds != None:
+        flow_rate = 100 #rpm
+        second = seconds
+        flushing(pump, channel, flow_rate, second)
+    else:
+        flow_rate, second = assign_flowrate(volume_add)
+        flushing(pump, channel, flow_rate, second)
+
+
 def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '50mL'):
     '''
     :param where: assign 'voir' or 'cell'
@@ -233,6 +245,7 @@ def test_titration_module(sample):
 #test_titration_module(titrationmoduletestsample)
 
 #Electrolyte formulation
+
 def Elelectrolyte_Formulation(sample:dict):
     '''
     Formulating the electrolyte with ionic liquid. Prepared in solution vior
@@ -258,17 +271,31 @@ def Elelectrolyte_Formulation(sample:dict):
     
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
+    Rinsing('cell', 'electrolyte', 'voir')
 
 def PlatingSolutionFormulation(sample:dict):
     '''
-    Formulating the electrolyte with ionic liquid
+    Formulates the electrolyte with copper sulfate and supporting electrolyte for plating solution.
     Status: Pending test run
-    :return
+    :param sample: Concentration of the plating solution (0.1 to 0.5 M)
+    :return: None
     '''
+    # Add 50 mL of plating solution to the cell
     Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='50mL')
     print('50 mL plating solution added to cell')
 
-    #@@ Pending varying the cu conc.
+    # Dilute the plating solution if necessary
+    if sample != 0.5:
+        print(f'Diluting the plating solution from 0.5 M to {sample} M')
+        plate.start_stirring()
+        # Calculate the time required to pump out waste for dilution
+        dilution_time = 210 * (0.5 - sample) / 0.5
+        pumping_waste_out(dilution_time)
+        # Add the required amount of solution for dilution
+        add_solution('spelec', dilution_time)
+        # Stir the solution after dilution
+        stirring(plate=plate, stirring_time=10)
+        print('Electrolyte formulated in cell completed.')
 
-    stirring(plate = plate,stirring_time = 30)
-    #print('Electrolyte formulated in reservoir')
+if __name__ == 'main':
+    PlatingSolutionFormulation(0.5)
