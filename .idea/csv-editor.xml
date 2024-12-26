@@ -17,20 +17,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="$USER_HOME$/Downloads/experimental_conditions.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="$USER_HOME$/Downloads/updated_objective_data.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
