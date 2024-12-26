@@ -161,7 +161,7 @@ def DataProcessing(path = str):
 
     # Store the slope and intercept for the whole concentration range in another CSV for both H2 and CO
     calibration_data = pd.DataFrame({
-        'Compound': ['H2', 'CO'],
+        'Product': ['H2', 'CO'],
         'Slope': [slope_H2, slope_CO],
         'Intercept': [intercept_H2, intercept_CO]
     })

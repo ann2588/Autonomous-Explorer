@@ -14,42 +14,18 @@ from Closed_Loop_Platform.BOtorchV2 import *
 
 
 '''
-# Last update: 12/23/2024
-# Note: The closed-loop process still requires testing
+# Last update: 12/25/2024
+# Note: 
 # Update:
-
+Finalize the closed-loop framework (yeah~)
 
 '''
 
-#%% Machine Learning Agent setup
-objectives = {
-    "bulk_electrolysis_potential": ObjectiveProperties(minimize=True),
-    "current_density": ObjectiveProperties(minimize=False),
-    "FE_CO": ObjectiveProperties(minimize=False),
-}
-
-# Initialize manager
-manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objectives=objectives)
-
-# Define thresholds using metric variables after experiment setup
-thresholds = [
-    ObjectiveThreshold(metric=manager.metric_bulk_electrolysis, bound=-1.0, relative=False),
-    ObjectiveThreshold(metric=manager.metric_current_density, bound=20.0, relative=False),
-    ObjectiveThreshold(metric=manager.metric_fe_co, bound=0.9, relative=False),
-]
-
-# Apply thresholds to the optimization config
-manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationConfig(
-    objective=manager.ax_client.experiment.optimization_config.objective,
-    objective_thresholds=thresholds,
-)
-
-# Load data
-manager.load_initial_data("experimental_conditions.csv", "updated_objective_data.csv")
-
-
-#%%
-doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DoERandomBatch10.csv"
+# Load offline data
+exp_data = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/experimental_conditions.csv"
+updated_data = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/updated_objective_data.csv"
+# Load DoE Data
+doepath = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DoERandomBatch10.csv"
 exp_dicts = doeprocess(doepath)
 
 
@@ -100,7 +76,7 @@ def run_experiment(exp, exp_path, expn):
     # Stage 2: Electrolyte Preparation
     il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
     print('Preparing Electrolyte for bulk electrolysis...')
-    #Elelectrolyte_Formulation(il_values)
+    Elelectrolyte_Formulation(il_values) #
 
     # Stage 3: Bulk Electrolysis
     plate.start_stirring()
@@ -175,33 +151,34 @@ def CO2Optimizer(mainfold, doe, initialization=True):
     if initialization:
         base_path = initialize_experiment(mainfold)
     else:
-        base_path = f'C:/Users/guazh/data/{mainfold}'
-        #base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
+        #base_path = f'C:/Users/guazh/data/{mainfold}'
+        base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
         create_directory(base_path)
     DPAgent.master_folder = base_path
     for expn, exp in doe.items():
-        next_experiment = manager.update() #suggest next experiment
         # Display the fetched parameters
-        print(f"Next trial fetched: {next_experiment}")
+        print(f"Next epxeriment: {expn}")
+        print(f"Next condition: {exp}")
 
         subfold = f"{datetime.now().strftime('%Y-%m-%d')}-{expn}"
         exp_path = f"{base_path}/{subfold}"
         create_directory(exp_path)
-        #run_experiment(exp, exp_path, expn)
 
-        print(expn)
-        print(exp)
+        print("------Data Collection Start------")
+        #run_experiment(exp, exp_path, expn)
+        print("------Data Collection Finished---")
+
         DPAgent.exp_num = int(expn[3:])  # Extract the number from the EXPXXXX format and convert to integer
-        print(DPAgent.exp_num)
+        print(f"Experiment number: EXP{expn}")
+        print(f"Condition for EXP{expn}: {exp}")
         bulk_electrolysis_potential, current_density, FECO = DPAgent.encode(exp) # Data processing
-        manager.ax_client.complete_trial(
-            trial_index=int(expn[3:]),  # Use the iteration index as the trial index
-            raw_data={
-                "bulk_electrolysis_potential": (bulk_electrolysis_potential, None),  # Provide the value and its variance (None here)
-                "current_density": (current_density, None), 
-                "FE_CO": (FECO, None)
-            }
-        ) 
+
+        # Print the results of the completed trial
+        print(f"EXP{expn} completed with:")
+        print(f"  bulk_electrolysis_potential: {bulk_electrolysis_potential} V")
+        print(f"  current_density: {current_density:.2e} A")
+        print(f"  FE_CO: {FECO:.2f} %")
+        print("------------------------------------------------")
 
 
     # Final rinsing
@@ -212,6 +189,7 @@ def CO2Optimizer(mainfold, doe, initialization=True):
 
 
 # Example Usage
-main_folder = 'TestRunForDataStructure_Structure3'
-DPAgent = DataProcessing()
-CO2Optimizer(main_folder, exp_dicts, initialization=False)
+if __name__ == "__main__":
+    main_folder = 'DryRun_withDeposition'
+    DPAgent = DataProcessing()
+    CO2Optimizer(main_folder, exp_dicts, initialization=False)

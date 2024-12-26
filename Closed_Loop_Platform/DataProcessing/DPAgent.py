@@ -1,17 +1,17 @@
 import os
 import sys
-# Add the parent directory of Closed_Loop_Platform to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import glob
 import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
-
+# Dynamically add the project root to PYTHONPATH
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_files
+
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/TestRunForDataStructure"
-Calibration_file = glob.glob(r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration*")
+Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/DryRun_withDeposition"
+Calibration_file = glob.glob(r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DataProcessing/GC calibration*")
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -20,12 +20,15 @@ class DataProcessing:
         self.exp_num = 1  # Experiment number to be used in file path construction
         self.database = pd.DataFrame(columns=["ExpID", "CuConc", "DepositionVoltage", "Deposition time", "CO2ratio", "IL1", "IL2", "IL3", "IL4", "IL5", "blank", "catalysis potential", "Catalysis Current", "FECO", "FEH2"])
         # Assigning calibration parameters
-        df_cali = pd.read_csv(self.calibration_file)
+        if not self.calibration_file:
+            raise ValueError("No calibration file found.")
+        df_cali = pd.read_csv(self.calibration_file[0])  # Assuming the first file in the list is the correct one
         products = ['CO', 'H2']
         for product in products:
             slope, intercept = df_cali.loc[df_cali['Product'] == product, ['Slope', 'Intercept']].iloc[0]
             setattr(self, f"slope_{product}", slope)
             setattr(self, f"intercept_{product}", intercept)
+        
 
     def gtdata(self):
         os.chdir(self.master_folder)
@@ -58,9 +61,9 @@ class DataProcessing:
         Extract and plot the catalysis current over time for a given experiment.
         """
         self.gtdata()
-        dirs = glob.glob(f"*EXP{self.exp_num:04d}*")  # Find directories matching the experiment number
+        dirs = [d for d in glob.glob(f"*EXP{self.exp_num:04d}*") if not d.endswith('.log')]  # Find directories matching the experiment number and exclude those ending with .log
         os.chdir(dirs[0] if dirs else None)  # Change to the first matching directory if found
-        dirs = glob.glob(f"*CO2*step1")  # Find directories related to CO2 and step 1
+        dirs = glob.glob(f"*CO2*")  # Find directories related to CO2 and step 1
         dir = [d for d in dirs if "GC" not in d]  # Filter out directories containing "GC"
         os.chdir(dir[0] if dir else None)  # Change to the first matching directory if found
         file = glob.glob(f"*_it_Elysis_*.txt")  # Find the file containing the catalysis current data
@@ -84,7 +87,7 @@ class DataProcessing:
         plotxy()
         last_30_seconds = itcurve[itcurve['Time second'] >= itcurve['Time second'].max() - 30]
         average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
-        print(f'Average Current: {average_current} A')  # Print the average current
+        #print(f'Average Current: {average_current} A')  # Print the average current
         return average_current  # Return the average current
 
     def extract_faradaic_efficienty(self, current):
@@ -92,13 +95,12 @@ class DataProcessing:
         Extract signal from gas chromotography and calculate the corresponding faradaic efficiency
         """
         self.gtdata()
-        dirs = glob.glob(f"*EXP{self.exp_num:04d}*")  # Find directories matching the experiment number
+        dirs = [d for d in glob.glob(f"*EXP{self.exp_num:04d}*") if not d.endswith('.log')]  # Find directories matching the experiment number and exclude those ending with .log
         os.chdir(dirs[0] if dirs else None)  # Change to the first matching directory if found
-        dir = glob.glob(f"GC*CO2*step1")  # Find directories related to CO2 and step 1
+        dir = glob.glob(f"GC*")  # Find directories related to CO2 and step 1
         
         process_asc_files(dir[0]) # this will generate 2 csv file with integral area of every peak
         os.chdir(dir[0])
-        print(os.getcwd())
         files = glob.glob(f"peak_data*")
         area_CO = 0
         area_H2 = 0
@@ -115,15 +117,27 @@ class DataProcessing:
             else:
                 continue
 
-            print(peak_name)
-            test_df = pd.read_csv(file)
-            peak_areas[peak_name] = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
+            try:
+                test_df = pd.read_csv(file)
+                peak_area = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
+                peak_areas[peak_name] = peak_area
+            except IndexError:
+                print(f"No peak found for {peak_name}. Assuming 0 concentration.")
+                peak_areas[peak_name] = 0
 
-        conc_H2 = (peak_areas['H2 as TCD'] - self.intercept_H2) / self.slope_H2  # ppm
-        conc_CO = (peak_areas['CO as FID'] - self.intercept_CO) / self.slope_CO  # ppm
+        conc_H2 = peak_areas['H2 as TCD'] and (peak_areas['H2 as TCD'] - self.intercept_H2) / self.slope_H2 or 0  # ppm
+        conc_CO = peak_areas['CO as FID'] and (peak_areas['CO as FID'] - self.intercept_CO) / self.slope_CO or 0  # ppm
+        print(f'  Area H2: {peak_areas["H2 as TCD"]}; Area CO: {peak_areas["CO as FID"]}')
+        #print(f'Concentration H2: {conc_H2}; Concentration CO: {conc_CO}.')
 
-        FECO = conc_CO * 1e-6 * 1e-3 * 2 * 96485 / (current * 60)  # gas flow rate = 1 sccm, gas in sample vial = 1 mL, z = 2 for CO
-        FEH2 = conc_H2 * 1e-6 * 1e-3 * 2 * 96485 / (current * 60)  # gas flow rate = 1 sccm, gas in sample vial = 1 mL, z = 2 for H2
+        # Convert concentration from ppm to molarity (mol/L)
+        # Assuming the gas density is approximately 1.225 kg/m^3 for air at room temperature
+        # and using the molar mass of CO (28.01 g/mol) and H2 (2.02 g/mol)
+        molarity_CO = conc_CO * 1e-6  # Convert ppm to mol/L
+        molarity_H2 = conc_H2 * 1e-6  # Convert ppm to mol/L
+
+        FECO = molarity_CO * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
+        FEH2 = molarity_H2 * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
 
         return FECO, FEH2
 
@@ -134,11 +148,12 @@ class DataProcessing:
         # now I got the output data, current, FECO, FEH2. I want to build a table with input and output data as follow:
         # f"*EXP{self.exp_num:04d}*", CuConc, DepositionVoltage, Deposition time,  CO2ratio, IL1, IL2, IL3, IL4, IL5, blamk, catalysis potential, Catalysis Current density, FECO, FEH2, 
 
-        print(f"Average Current: {current:.2e} A")
-        print(f"Faradaic Efficiency CO: {FECO:.2f}")
-        print(f"Faradaic Efficiency H2: {FEH2:.2f}")
+        print(f"  Average Current: {current:.2e} A")
+        print(f"  Faradaic Efficiency CO: {FECO:.2f}")
+        print(f"  Faradaic Efficiency H2: {FEH2:.2f}")
         output = [current, FECO, FEH2]
         return current, FECO, FEH2
+    
     def encode(self, x):
         id = f"EXP{self.exp_num:04d}"
         current, FECO, FEH2 = self.display_result()
@@ -176,11 +191,11 @@ class DataProcessing:
         return bulk_electrolysis_potential, current, FECO
 
 '''
-DataAgent = DataProcessing(master_folder, calibration_file)
+DataAgent = DataProcessing(Master_folder, Calibration_file)
 
 # for batch processing
 for i in range(1,3):
     DataAgent.exp_num = i
     print(i)
-    DataAgent.encode()
+    DataAgent.display_result()
 '''

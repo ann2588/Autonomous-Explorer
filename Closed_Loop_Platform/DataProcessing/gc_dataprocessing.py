@@ -121,7 +121,7 @@ def analyze_intensity(data, column_name, output_filename):
     # Export to CSV
     peak_df = pd.DataFrame(all_peak_info, columns=['Peak Name', 'Peak Time (s)', 'Peak Area'])
     peak_df.to_csv(output_filename, index=False)
-    print(f"Saved peak data to {output_filename}")
+    #print(f"Saved peak data to {output_filename}")
 
 
 def process_asc_files(folder_path):
@@ -132,7 +132,7 @@ def process_asc_files(folder_path):
 
     '''
     asc_files = [f for f in os.listdir(folder_path) if f.endswith('.ASC')]
-    print(asc_files)
+    #print(asc_files)
 
     for i, file_name in enumerate(asc_files, start=1):
         file_path = os.path.join(folder_path, file_name)
@@ -155,7 +155,7 @@ def process_asc_files(folder_path):
         unique_number = "FID" if file_name.find("FID") != -1 else "TCD"
         output_filename = f"peak_data_{unique_number}.csv"
 
-        print(f"Analyzing {file_name} and saving results to {output_filename}...")
+        #print(f"Analyzing {file_name} and saving results to {output_filename}...")
         analyze_intensity(data, 'Intensity_1', os.path.join(folder_path, output_filename))
 
 '''

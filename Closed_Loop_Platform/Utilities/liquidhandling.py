@@ -56,14 +56,15 @@ def stirring(plate=None, stirring_time=30, rpm=800):
     plate.stop_stirring()
     print('Finished stirring\n')
     time.sleep(5)
+
 def assign_flowrate(volume_add):
     flow_rate = volume.get(volume_add).get('rpm')
     second = volume.get(volume_add).get('second')
 
     if flow_rate is None or second is None:
         print('The designated volume is not defined')
-
     return flow_rate, second
+
 def flushing(pump, channel, rpm, second):
     pump.set_mode_pump_rpm(channel, rpm)
     try:
@@ -74,6 +75,7 @@ def flushing(pump, channel, rpm, second):
         print(f'\n{pump.__str__()} {channel} keeps stopped because 0 rpm assigned.')
     time.sleep(second)
     pump.stop(channel)
+
 def select_solution_rinsing(solution_type=None, to_voir=False):
     # Default values for pump and channel based on `to_voir` flag
     if to_voir:
@@ -102,6 +104,7 @@ def select_solution_rinsing(solution_type=None, to_voir=False):
         print('Solution not found')
         return None, None, None, None
     return pump, channel, valve, port
+
 def pumping_waste_out(where:str = None, times = 210):
     print('Pumping waste out from cell...')
     if where == 'cell':
@@ -155,8 +158,9 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
         add_solution('water', volume_add = volume_assigned)
         print('Cell rinsing completed')
     if acidrinse == True:
-        stirring(plate = plate, stirring_time=600)
+        stirring(plate = plate, stirring_time=1200)
         print('Acid rinsing completed')
+
 def titration(element, number_of_drops, pump, valve, valve_port, pump_channel):  # to be optimized to use acid/base as little as possible
 
     print(valve, valve_port)
@@ -183,6 +187,7 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
         changing_port(swtv, switching_position['loading'])
         time.sleep(1)
         pump.stop(pump_channel)
+
 def select_solution_IL(element= None):
     if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','Blank']:
         valve = valve_slva
@@ -192,6 +197,7 @@ def select_solution_IL(element= None):
     else:
         raise ValueError("Element not recognized")  # Do sth else to add blank solution
     return valve, valve_port, pump, pump_channel
+
 def titration_channel_rinsing(valve, valve_port,pump, pump_channel):
     changing_port(valve, valve_port)
     changing_port(swtv, switching_position['loading'])
@@ -229,15 +235,14 @@ def test_titration_module(sample):
 #Electrolyte formulation
 def Elelectrolyte_Formulation(sample:dict):
     '''
-    Formulating the electrolyte with ionic liquid
+    Formulating the electrolyte with ionic liquid. Prepared in solution vior
     Status: Pending test run
-    :return
     '''
     pumping_waste_out('cell')
     pumping_waste_out('voir')
     Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='50mL')
     print('50 mL electrolyte added to reservoir')
-    '''
+    
     for element, partition in sample.items():
         if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','blank']:
             if partition == 0.0:
@@ -250,7 +255,7 @@ def Elelectrolyte_Formulation(sample:dict):
                 titration_channel_rinsing(valve, stock_solution_port_a['blank'], pump, pump_channel=icca_channel['il'])
         else:
             continue
-    '''
+    
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
 
