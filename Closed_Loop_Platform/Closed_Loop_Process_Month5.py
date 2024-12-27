@@ -1,23 +1,25 @@
-#%%
-import sys
-import os
-from datetime import datetime
-# Add the parent directory of Closed_Loop_Platform to the Python path
+'''
+# Last update: 12/27/2024
+# Note: 
+# Update:
+Add some user interface interaction features
 
+'''
+#%%
+import sys, os, subprocess
+from datetime import datetime
+from tqdm import tqdm
 from Closed_Loop_Platform.Communication import *
+
+# Start the server in a new terminal
+start_server_in_new_terminal(server_script)
+open_terminal_to_view_log(os.abspath("C:\Users\guazh\data\server.log"))
+print("Main script is running...")
+
+
 from Closed_Loop_Platform.DataProcessing import *
 from Closed_Loop_Platform.BOtorchV2 import *
 from Closed_Loop_Platform.Utilities import *
-
-
-
-'''
-# Last update: 12/25/2024
-# Note: 
-# Update:
-Finalize the closed-loop framework (yeah~)
-
-'''
 
 # Load offline data
 exp_data = r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/experimental_conditions.csv"
@@ -39,20 +41,21 @@ def initialize_experiment(mainfold):
 
     log_folder = f'C:/Users/guazh/data/{mainfold}'
     create_master_logger(log_folder)
+    open_terminal_to_view_log(os.abspath(os.path.join(log_folder, 'master.log')))
     setup_logging_for_experiment('Initial')
 
     SendCommandToGC(f"Connect to GC, mainfolder: {mainfold}")
     time.sleep(30)
 
     SIGNAL = CheckSignalFromGC()
-    # Ask human to check if the current platform is connected to the server (Y/N?)
+    check_experiment_preconditions()
 
-    print('Start electrode initialization')
-    insitu_echem_regeneration(initial_path) #Todo Change this protocol
-    print('Finish electrode initialization')
-    #control_co2_ar_ratio(0)  # Purge Ar into Cell to degas
-    #print('Check electrode Activity')
-    #run_CV_HER_varyE(initial_path, sample='Initial', gas='ArKOH', sr_cv=50)
+    messages = ['Start electrode regeneration', 'Finish electrode regeneration']
+    for i, message in enumerate(messages):
+        print(message)
+        os.system(f'python {script_path} -m "{message}"')
+        if i == 0:
+            insitu_echem_regeneration(exp_path)
 
     return base_path
 
@@ -67,6 +70,9 @@ def run_experiment(exp, exp_path, expn):
     control_co2_ar_ratio(0)
     stirring(plate, 60)
     deposit_v, deposit_t = exp['Volt'], exp['Time']
+
+    for _ in tqdm(range(deposit_t), desc=f'{expn} Deposition', unit='s'):
+        time.sleep(1)
     electrodeposition(exp_path, f'{expn}Deposition', deposit_v, deposit_t)
     Rinsing('cell', 'spelec', 'spelec', 1)
     print('Finish Cu catalyst deposition')
@@ -88,18 +94,17 @@ def run_experiment(exp, exp_path, expn):
 
     for voltage in potential_windows:
         execute_bulk_electrolysis(exp, exp_path, expn, voltage)
+    
+    # Stage 4: Electrode regeneration
+    messages = ['Start electrode regeneration', 'Finish electrode regeneration']
+    for i, message in enumerate(messages):
+        print(message)
+        os.system(f'python {script_path} -m "{message}"')
+        if i == 0:
+            insitu_echem_regeneration(exp_path)
 
-    message = 'Start electrode regeneration'
-    print(message)
-    os.system(f'python {script_path} -m "{message}"')
-    insitu_echem_regeneration(exp_path)
-    message = 'Finish electrode regeneration'
-    print('Finish electrode regeneration')
-    os.system(f'python {script_path} -m "{message}"')
-
-    Rinsing('cell', 'water', 'water', 1)
     plate.start_stirring()
-    time.sleep(60)
+    Rinsing('cell', 'water', 'water', 1)
     Rinsing('voir', 'water', 'water', 1)
 
     print('Experiment completed')
@@ -118,23 +123,17 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
 
     if wait_for_gc_signal():
         #impedence = bulk_electrolysis_beforeCP(exp_path, sample=expn, E_ed=voltage, note=f"{exp['CO2ratio']}CO2")
-        SendCommandToGC("Wait 180 second and start sample Injection")
-        bulk_electrolysis_CP(exp_path, sample=expn, RU=10, E_ed=voltage, note=f"{exp['CO2ratio']}CO2")
-        time.sleep(300)
+        SendCommandToGC("Wait 180 second and start 2 sample Injections")
+        bulk_electrolysis_CP(exp_path, sample=expn, RU=10, E_ed=voltage, note=f"{exp['CO2ratio']}CO2", Time_ed = 1060)
 
     if wait_for_gc_signal():
-        print("GC is running, waiting 7 minutes...")
-        time.sleep(560)
-    else:
+        print("GC is running, proceed to perform electrode regeneration.") #Assume at this moment the GC is running the second injection.
+    else: 
         print("Hey, GC is not running!!!")
         os.system(f'python {script_path} -m "GC is not running, check it out."')
 
-    SendCommandToGC("Is GC still running?")
-    if wait_for_gc_signal():
-        print("GC finished measurement. Proceed to next experiment.")
-
-
-def wait_for_gc_signal(timeout=300):
+    
+def wait_for_gc_signal(timeout=30):
     """Waits for GC signal with a timeout."""
     start_time = time.time()
     SIGNAL = CheckSignalFromGC()
@@ -143,7 +142,7 @@ def wait_for_gc_signal(timeout=300):
             logging.error("Timeout: GC did not respond within the timeout period.")
             os.system(f'python {script_path} -m "Timeout: GC did not respond in time."')
             return False
-        time.sleep(60)
+        time.sleep(5)
         SIGNAL = CheckSignalFromGC()
     return True
 
@@ -182,6 +181,11 @@ def CO2Optimizer(mainfold, doe, initialization=True):
         print(f"  FE_CO: {FECO:.2f} %")
         print("------------------------------------------------")
 
+        #Check if GC finished yet
+        SendCommandToGC("Is GC still running?")
+        if wait_for_gc_signal():
+            print("GC finished measurement. Proceed to next experiment.")
+
 
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
@@ -194,4 +198,4 @@ def CO2Optimizer(mainfold, doe, initialization=True):
 if __name__ == "__main__":
     main_folder = 'DoEFirstBatch'
     DPAgent = DataProcessing()
-    CO2Optimizer(main_folder, exp_dicts, initialization=False)
+    CO2Optimizer(main_folder, exp_dicts, initialization=True)

@@ -12,7 +12,7 @@ from Closed_Loop_Platform.Utilities import *
 
 '''
 # Last update: 12/25/2024
-# Note: Pending testing
+# Note: This is the version without human interaction in close-loop process in version 12/27. Pending update.
 # Update:
 Finalize the autonomous framework (yeah~)
 

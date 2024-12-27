@@ -323,8 +323,10 @@ def PlatingSolutionFormulation(sample:dict):
     :return: None
     '''
     # Add 50 mL of plating solution to the cell
+    start_time = time.time()
     Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='50mL')
-    print('50 mL 0.5 M plating solution added to cell')
+    end_time = time.time()
+    print(f'50 mL 0.5 M plating solution added to cell in {end_time - start_time:.2f} seconds')
 
     # Dilute the plating solution if necessary
     if sample != 0.5:
@@ -332,11 +334,20 @@ def PlatingSolutionFormulation(sample:dict):
         plate.start_stirring()
         # Calculate the time required to pump out waste for dilution
         dilution_time = int(210 * (0.5 - sample) / 0.5)
+        start_time = time.time()
         pumping_waste_out('cell', times = dilution_time)
+        end_time = time.time()
+        print(f'Pumping waste out for dilution in {end_time - start_time:.2f} seconds')
         # Add the required amount of solution for dilution
+        start_time = time.time()
         add_solution('spelec', volume_add = None, seconds=dilution_time)
+        end_time = time.time()
+        print(f'Adding solution for dilution in {end_time - start_time:.2f} seconds')
         # Stir the solution after dilution
+        start_time = time.time()
         stirring(plate=plate, stirring_time=10)
+        end_time = time.time()
+        print(f'Stirring solution after dilution in {end_time - start_time:.2f} seconds')
         print(f'{sample} M plating solution prepared in cell.')
 
 def StopAllPump():
