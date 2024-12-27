@@ -87,7 +87,7 @@ class MX_valve():
 
     """
 
-    def __init__(self, address, ports=10, name='', verbose=False):
+    def __init__(self, address,name, ports=10, verbose=False):
         '''
         Input:
         `Address`: address of valve, '/dev/ttyUSBX' on linux. 'COMX' on windows.
@@ -107,6 +107,10 @@ class MX_valve():
         # File-141803967
         # download from:
         # https://www.idex-hs.com/support/literature-downloads/operation-manuals
+
+    def __str__(self):
+        return f"{self.name}"  # Customized output for print()
+
 
     def stripped_hex(self, target):
         """

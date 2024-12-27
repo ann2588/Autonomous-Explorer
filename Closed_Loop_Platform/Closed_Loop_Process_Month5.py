@@ -3,13 +3,11 @@ import sys
 import os
 from datetime import datetime
 # Add the parent directory of Closed_Loop_Platform to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 
 from Closed_Loop_Platform.Communication import *
 from Closed_Loop_Platform.DataProcessing import *
 from Closed_Loop_Platform.BOtorchV2 import *
-#from Closed_Loop_Platform.Utilities import *
+from Closed_Loop_Platform.Utilities import *
 
 
 
@@ -91,9 +89,13 @@ def run_experiment(exp, exp_path, expn):
     for voltage in potential_windows:
         execute_bulk_electrolysis(exp, exp_path, expn, voltage)
 
-    print('Start electrode regeneration')
+    message = 'Start electrode regeneration'
+    print(message)
+    os.system(f'python {script_path} -m "{message}"')
     insitu_echem_regeneration(exp_path)
+    message = 'Finish electrode regeneration'
     print('Finish electrode regeneration')
+    os.system(f'python {script_path} -m "{message}"')
 
     Rinsing('cell', 'water', 'water', 1)
     plate.start_stirring()
@@ -190,6 +192,6 @@ def CO2Optimizer(mainfold, doe, initialization=True):
 
 # Example Usage
 if __name__ == "__main__":
-    main_folder = 'DryRun_withDeposition'
+    main_folder = 'DoEFirstBatch'
     DPAgent = DataProcessing()
     CO2Optimizer(main_folder, exp_dicts, initialization=False)

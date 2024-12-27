@@ -568,8 +568,8 @@ def insitu_echem_regeneration(mainpath: str):
     rinse_times = 1
     onset_array = []
     while rinse_times <= 5:
-        Rinsing('water', 'hno3', acidrinse=True, repetitions=1)
-        Rinsing('water', 'electrolyte', 1)
+        Rinsing('cell','water', 'hno3', acidrinse=True, repetitions=1)
+        Rinsing('cell', 'water', 'electrolyte', 1)
         onset = LSV_Regeneration(mainpath, f'{rinse_times}acid', current_criteria=2)
         onset_array.append(onset)
         print('onset_array: ', onset_array)

@@ -3,13 +3,10 @@ import sys
 import os
 from datetime import datetime
 # Add the parent directory of Closed_Loop_Platform to the Python path
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-
 from Closed_Loop_Platform.Communication import *
 from Closed_Loop_Platform.DataProcessing import *
 from Closed_Loop_Platform.BOtorchV2 import *
-#from Closed_Loop_Platform.Utilities import *
+from Closed_Loop_Platform.Utilities import *
 
 
 
