@@ -11,4 +11,5 @@ port_MFC_ArSWTV = 'COM4'
 port_MFC_co2 = 'COM12'
 port_MFC_Ar = 'COM13'
 port_MFC_Arco2 = 'COM14'
+#port_MFC_Arco2 = 'COM15' #HY
 port_MFM = 'COM11'

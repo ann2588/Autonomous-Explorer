@@ -3,8 +3,10 @@
 from .Logging import *
 from .Client import *
 
+
 # Path to the server script
-server_script = os.path.abspath("/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/Communication/Server.py")
+server_script = os.path.abspath(r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\Communication\Server.py")
+
 
 def start_server_in_new_terminal(script_path):
     """Starts the given script in a new terminal window."""
@@ -56,21 +58,58 @@ def check_experiment_preconditions():
 
     print("All preconditions confirmed. Proceeding with the experiment.")
 
+
 def open_terminal_to_view_log(log_file_path):
-    """Opens a new terminal window to tail a log file."""
+    """Opens a PowerShell window to tail a log file using Start-Process."""
     try:
-        if os.name == "nt":  # For Windows
-            # Use start cmd to open a new console and tail the log file
-            subprocess.Popen(
-                ["start", "cmd", "/k", f"tail -f {log_file_path}"],
-                shell=True,
-            )
-        elif os.name == "posix":  # For Linux/Mac
-            # Replace 'xterm' with your preferred terminal emulator
-            terminal_emulator = "xterm"  # Options: 'gnome-terminal', 'konsole', etc.
-            subprocess.Popen(
-                [terminal_emulator, "-e", f"tail -f {log_file_path}"],
-            )
-        print(f"Opened terminal for log file: {log_file_path}")
+        # PowerShell command to open a new window and tail the log file
+        command = f"Start-Process powershell -ArgumentList '-NoExit', '-Command \"Get-Content \\\"{log_file_path}\\\" -Wait\"'"
+
+        # Execute the command
+        subprocess.Popen(["powershell", "-Command", command], shell=True)
+        print(f"Opened PowerShell window for log file: {log_file_path}")
     except Exception as e:
-        print(f"Error opening terminal for log file {log_file_path}: {e}")
+        print(f"Error opening PowerShell window for log file {log_file_path}: {e}")
+
+def ask_user_restartPeakSimple():
+    """Asks the user if the server is running and connected to the GC."""
+    while True:
+        response = input("Please restart the Peaksimple client (Y/N): ").strip().upper()
+        if response == "Y":
+            print("Server connecting to Peaksimple and GC...")
+            return True
+        elif response == "N":
+            print("Please ensure the Peaksimple Client has been restarted and connected to GC, then try again.")
+        else:
+            print("Invalid input. Please enter 'Y' or 'N'.")
+
+def find_and_kill_process(program_name):
+    """Find and kill a process by its name."""
+    import psutil
+    import signal
+    for process in psutil.process_iter(['pid', 'name']):
+        if program_name.lower() in process.info['name'].lower():
+            try:
+                os.kill(process.info['pid'], signal.SIGTERM)
+                print(f"Terminated process: {program_name} (PID: {process.info['pid']})")
+                return True
+            except Exception as e:
+                print(f"Error terminating process {program_name}: {e}")
+                return False
+    print(f"No process found with name: {program_name}")
+    return False
+
+def restart_program(program_path):
+    """Restart a program by killing it and starting it again."""
+    program_name = os.path.basename(program_path)
+
+    # Step 1: Kill the program if it's running
+    if find_and_kill_process(program_name):
+        time.sleep(2)  # Wait for the process to terminate
+
+    # Step 2: Start the program
+    try:
+        subprocess.Popen([program_path], shell=True)
+        print(f"Restarted program: {program_name}")
+    except Exception as e:
+        print(f"Error restarting program: {e}")

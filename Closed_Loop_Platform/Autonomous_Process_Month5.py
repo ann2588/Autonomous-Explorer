@@ -134,7 +134,7 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
     if wait_for_gc_signal():
         #impedence = bulk_electrolysis_beforeCP(exp_path, sample=expn, E_ed=voltage, note=f"{exp['CO2ratio']}CO2")
         SendCommandToGC("Wait 180 second and start sample Injection")
-        bulk_electrolysis_CP(exp_path, sample=expn, RU=10, E_ed=voltage, note=f"{exp['CO2ratio']}CO2")
+        bulk_electrolysis_CP(exp_path, sample=expn, RU=10, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2")
         time.sleep(300)
 
     if wait_for_gc_signal():

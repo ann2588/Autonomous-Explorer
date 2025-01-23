@@ -1,3 +1,9 @@
+'''
+This version compatitble with the flow chemistry where the electrolyte connected to selection valve C channel 4
+instead of only connected to voir
+to use this version, Please copy this module to Utilities and replace liquid handling
+'''
+
 from .portaccess import *
 from .gashandling import *
 from ika.magnetic_stirrer import MagneticStirrer
@@ -21,7 +27,7 @@ cat = str()
 iccb_channel = {'waste_ano': 1, 'waste_cat': 2, 'slvc': 3, 'waste_voir': 4}
 icca_channel = {'water': 1, 'electrolyte': 2, 'il': 3}
 switching_position = {'loading': 1, 'injection': 2}
-stock_solution_port_c = {'water': 1, 'cu': 2, 'spelec': 3, 'regen': 4, 'hno3': 5, 'voir': 6}
+stock_solution_port_c = {'water': 1, 'cu': 2, 'spelec': 3, 'electrolyte': 4, 'hno3': 5, 'voir': 6}
 stock_solution_port_a = {'blank': 1, 'IL1': 2, 'IL2': 3, 'IL3': 4, 'IL4': 5, 'IL5': 6}
 volume = {
     '1mL': {'rpm': 33, 'second': 15},  # plating solution
@@ -30,7 +36,8 @@ volume = {
     '4mL': {'rpm': 50, 'second': 40},  # Reaction volume
     '5mL': {'rpm': 100, 'second': 20},  # Rinsing
     '6mL': {'rpm': 100, 'second': 25},  # Rinsing
-    '12mL' :{'rpm': 100, 'second': 50},  # Rinsing
+    '10mL': {'rpm': 100, 'second': 50},  # Rinsing
+    '20mL' :{'rpm': 100, 'second': 100},  # Rinsing
     '26mL' :{'rpm': 100, 'second': 110},  # Rinsing
     '50mL' :{'rpm': 100, 'second': 210}  # Rinsing
 }
@@ -48,7 +55,7 @@ def Purge_Ar_in_cell():
     control_co2_ar_ratio(0)
 
 #%%  Utilities for Liquid handling
-def stirring(plate=None, stirring_time=30, rpm=800):
+def stirring(plate=None, stirring_time=30, rpm=400):
     print(f'Stirring at {rpm} rpm for {stirring_time} s')
     plate.start_stirring()
     plate.target_stir_rate = rpm
@@ -76,7 +83,7 @@ def flushing(pump, channel, rpm, second):
     time.sleep(second)
     pump.stop(channel)
 
-def select_solution_rinsing(solution_type=None, to_voir=False):
+def select_solution_rinsing(solution_type=None, to_voir=False, from_voir=False):
     # Default values for pump and channel based on `to_voir` flag
     if to_voir:
         pump = icca
@@ -91,12 +98,16 @@ def select_solution_rinsing(solution_type=None, to_voir=False):
             channel = iccb_channel.get('slvc')
             valve, port = valve_slvc, stock_solution_port_c.get('water')
     elif solution_type == 'electrolyte':
-        if to_voir:
+        if to_voir and from_voir == False:
             channel = icca_channel.get('electrolyte')
             valve, port = None, None
-        else:
+        elif to_voir == False and from_voir:
             channel = iccb_channel.get('slvc')
             valve, port = valve_slvc, stock_solution_port_c.get('voir')
+        else:
+            channel = iccb_channel.get('slvc')
+            valve, port = valve_slvc, stock_solution_port_c.get('electrolyte')
+
     elif solution_type in ['cu', 'hno3', 'regen', 'spelec']:
         channel = iccb_channel.get('slvc')
         valve, port = valve_slvc, stock_solution_port_c.get(solution_type)
@@ -104,9 +115,9 @@ def select_solution_rinsing(solution_type=None, to_voir=False):
         print('Solution not found')
         return None, None, None, None
     return pump, channel, valve, port
-
-def pumping_waste_out(where:str = None, times = 210):
-    if times != 210:
+#%%
+def pumping_waste_out(where:str = None, times = 100):
+    if times != 100:
         print('Removing liquid to dilute the bulk concentration...')
     else:
         print(f'Pumping waste out from {where}...')
@@ -119,25 +130,29 @@ def pumping_waste_out(where:str = None, times = 210):
             iccb.set_mode_pump_rpm(channel, rpm)
         for channel in channels:
             iccb.start(channel)
-        print(times)
+            print(f'Starting {iccb} channel {channel} at {rpm} rpm')
+        print(f'{times} seconds.')
         time.sleep(times)
         for channel in channels:
             iccb.stop(channel)
 
     elif where == 'voir':
-        flushing(iccb, 4, 100, times)
+        flushing(iccb, 4, 100, second = times)
 
     elif where == 'both':
         channels = [1, 2, 4]
         rpm = 100
+        times = 100
         for channel in channels:
             iccb.set_mode_pump_rpm(channel, rpm)
         for channel in channels:
             iccb.start(channel)
-        print(times)
+            print(f'Starting {iccb} channel {channel} at {rpm} rpm')
+        print(f'{times} seconds.')
         time.sleep(times)
         for channel in channels:
             iccb.stop(channel)
+
 
     else:
         print('Please identify which cell you want to empty')
@@ -146,10 +161,13 @@ def pumping_waste_out(where:str = None, times = 210):
 
 def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = False, from_voirs = False):
     plate.start_stirring()
-    pump, channel, valve, port = select_solution_rinsing(solution_type, to_voir=to_voirs)
-    if valve is None and port is None and to_voirs is True:
+    pump, channel, valve, port = select_solution_rinsing(solution_type, to_voir = to_voirs, from_voir = from_voirs  )
+
+    if valve is None and port is None and to_voirs is True: # Electrolyte and water into voir from pump a
+        print(f'{solution_type} {pump} {channel} {valve} {port}')
         print(f'{solution_type} flow into voir. No valve involved.')
     else:
+        print(f'{solution_type} {pump} {channel} {valve} {port}')
         changing_port(valve, port)
 
     ## Scenerio for plating solution formulation
@@ -158,30 +176,12 @@ def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = Fa
         second = seconds
         flushing(pump, channel, flow_rate, second)
 
-    ## Scenerio for handling electrolyte
-    # Since the hardware design requiring any electrolyte has to go to voir before goes into cell.
-    # The workflow here is to let the pump into voir and the pump into cell running at the same time to reduce the lead time for liquid transfer.
-    # This framework assuming the flow rate for each pump channel stay the same.
-
-    elif solution_type == 'electrolyte' and to_voirs == False and from_voirs == True:
-        pump_2, channel_2, valve_2, port_2 = select_solution_rinsing(solution_type, to_voir=True)
-        pump_all = [pump, pump_2]
-        channels_all = [channel, channel_2]
-        rpm = 100
-        for pump_ in pump_all:
-            for channel_ in channels_all:
-                pump_.set_mode_pump_rpm(channel, rpm)
-                pump_.start(channel_)
-        time.sleep(210)
-        for pump_ in pump_all:
-            for channel_ in channels_all:
-                pump_.stop(channel_)
-
+    ## For normal Add solution
     else:
         flow_rate, second = assign_flowrate(volume_add)
         flushing(pump, channel, flow_rate, second)
 
-def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '50mL', from_voir = False):
+def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '20mL', from_voir = False):
     '''
     :param where: assign 'voir' or 'cell'
     :param rinsing_solution: 'electrolyte, 'il', 'water', 'cu', 'hno3', 'regen', 'spelec'
@@ -191,35 +191,57 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
     :return:
     '''
     to_voir = True if where == 'voir' else False #%% default would be rinsing the cell unless specified.
+
     def run_solution(solution, volume = volume_assigned, to_voirs = to_voir, from_voirs = from_voir):
         for _ in range(repetitions):
             plate.start_stirring()
-            add_solution(solution, volume_add = volume , to_voirs = to_voir, from_voirs = from_voir)  # pump control
+            mfc_co2ar.set_flow_rate(7)
+            add_solution(solution, volume_add = volume , to_voirs = to_voirs, from_voirs = from_voirs)  # pump control
+            mfc_co2ar.set_flow_rate(0)
+            mfc_co2.set_flow_rate(7)
             pumping_waste_out(where)  # pump control
-            print(_ + 1, ' rinsed by ', solution)
-        print('Cell rinsed by ', solution, ' completed')
+            mfc_co2.set_flow_rate(0)
+            print(f'{ _ + 1} rinsed by {solution}. ')
+        print(f'{where} rinsed by {solution} completed')
 
-    pumping_waste_out(where)  # Initial waste_out() call
-    run_solution(rinsing_solution, volume = volume_assigned,to_voirs = to_voir, from_voirs = from_voir)
-    if target_solution != None:
-        run_solution(target_solution, volume = volume_assigned, from_voirs = from_voir)
-        print('Cell rinsing completed')
-        add_solution(target_solution, volume_add = volume_assigned, to_voirs = to_voir, from_voirs = from_voir)  # pump control
-        print(target_solution, ' added to cell')
-    elif target_solution == 'electrolyte' and from_voir == True:
-        add_solution(target_solution, volume_add=volume_assigned, to_voirs=to_voir,
-                     from_voirs=from_voir)  # pump control
-        print(target_solution, ' added to cell')
+    if target_solution == 'electrolyte' and from_voir == True:
+        mfc_co2.set_flow_rate(7)
+        pumping_waste_out(where)
+        mfc_co2.set_flow_rate(0)
     else:
-        add_solution('water', volume_add = volume_assigned, to_voirs = to_voir,from_voirs = from_voir)
-        print('Cell rinsing completed')
+        mfc_co2.set_flow_rate(7)
+        pumping_waste_out('both')
+        mfc_co2.set_flow_rate(0)
+
+    run_solution(rinsing_solution, volume=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
+
+    # The case when adding prepared electrolyte from voir
+    if target_solution == 'electrolyte' and from_voir == True and to_voir == False:
+        mfc_co2ar.set_flow_rate(7)
+        add_solution(target_solution, volume_add=volume_assigned, to_voirs = to_voir,from_voirs=from_voir)  # pump control
+        mfc_co2ar.set_flow_rate(0)
+        print(f'{target_solution} added to {where}')
+
+    elif target_solution == 'None': # If not target_solution not assigned, add water in defult
+        mfc_co2ar.set_flow_rate(7)
+        add_solution('water', volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
+        mfc_co2ar.set_flow_rate(0)
+        print(f'{where} rinsed by water completed')
+
+    else: #Normal
+        run_solution(target_solution, volume=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
+        mfc_co2ar.set_flow_rate(7)
+        add_solution(target_solution, volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
+        mfc_co2ar.set_flow_rate(0)
+        print(f'{where} rinsed by {target_solution} completed')
+
     if acidrinse == True:
         stirring(plate = plate, stirring_time=1200)
         print('Acid rinsing completed')
 
 def titration(element, number_of_drops, pump, valve, valve_port, pump_channel):  # to be optimized to use acid/base as little as possible
 
-    print(valve, valve_port)
+    print(f'{valve}, {valve_port}')
     changing_port(valve, valve_port)
     control_gas_flow(mfc_swtv, 'open', flow_rate=30)
     # load mode initial filling
@@ -295,7 +317,7 @@ def Elelectrolyte_Formulation(sample:dict):
     Formulating the electrolyte with ionic liquid. Prepared in solution vior
     Status: Pending test run
     '''
-    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='50mL')
+    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='20mL')
     print('50 mL electrolyte added to reservoir')
     
     for element, partition in sample.items():
@@ -313,7 +335,8 @@ def Elelectrolyte_Formulation(sample:dict):
     
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
-    Rinsing('cell', 'water', 'electrolyte', 1, volume_assigned='50mL', from_voir=True)
+    Rinsing('cell', 'water', 'electrolyte', 2, volume_assigned='20mL', from_voir=True)
+    print('Electrolyte in voir transferred to cell.')
 
 def PlatingSolutionFormulation(sample:dict):
     '''
@@ -323,17 +346,18 @@ def PlatingSolutionFormulation(sample:dict):
     :return: None
     '''
     # Add 50 mL of plating solution to the cell
+    close_all_gas()
     start_time = time.time()
-    Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='50mL')
+    Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='20mL')
     end_time = time.time()
-    print(f'50 mL 0.5 M plating solution added to cell in {end_time - start_time:.2f} seconds')
+    print(f'20 mL 0.5 M plating solution added to cell in {end_time - start_time:.2f} seconds')
 
     # Dilute the plating solution if necessary
     if sample != 0.5:
         print(f'Diluting the plating solution from 0.5 M to {sample} M')
         plate.start_stirring()
         # Calculate the time required to pump out waste for dilution
-        dilution_time = int(210 * (0.5 - sample) / 0.5)
+        dilution_time = int(100 * (0.5 - sample) / 0.5)
         start_time = time.time()
         pumping_waste_out('cell', times = dilution_time)
         end_time = time.time()

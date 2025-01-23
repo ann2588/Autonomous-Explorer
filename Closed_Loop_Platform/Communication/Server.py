@@ -1,22 +1,43 @@
-import os
+import os, sys
 import socket
 import logging
 import time
 import subprocess
+
+# Get the absolute path of the parent directory of Closed_Loop_Platform
+closed_loop_path = os.path.abspath(R"C:\Users\guazh\PycharmProjects\CO2Platform")
+
+# Add the parent directory to the Python path
+sys.path.append(closed_loop_path)
+
+print(f"Added to Python path: {closed_loop_path}")
+
 from Closed_Loop_Platform.Communication.gasanalyzer import *
 
 
-def kill_port(port):
-    # Find the PID of the process using the port
-    result = subprocess.run(["lsof", "-t", f"-i:{port}"], capture_output=True, text=True)
-    pid = result.stdout.strip()
 
-    if pid:
-        # Kill the process using the PID
-        os.system(f"kill -9 {pid}")
-        print(f"Process using port {port} (PID: {pid}) has been terminated.")
-    else:
+def kill_port(port):
+    try:
+        # Find the PID of the process using the port
+        result = subprocess.run(
+            ["netstat", "-ano"],
+            capture_output=True,
+            text=True,
+            check=True
+        )
+        # Filter lines containing the port
+        lines = result.stdout.splitlines()
+        for line in lines:
+            if f":{port}" in line:
+                parts = line.split()
+                pid = parts[-1]  # The last column is the PID
+                # Kill the process with the found PID
+                subprocess.run(["taskkill", "/PID", pid, "/F"], check=True)
+                print(f"Port {port} is now free (Process {pid} killed).")
+                return
         print(f"No process is using port {port}.")
+    except subprocess.CalledProcessError as e:
+        print(f"Error: {e}")
 
 
 # Set the folder path where the log file should be stored
@@ -50,7 +71,7 @@ print("Server is listening...")
 CommandList = [
     'Connect to GC',
     'Loading Control Files',
-    'Wait 180 second and start sample Injection',
+    'Wait 180 second and start 1 sample Injections',
     'Check if still running'
     'Baking'
 ]
@@ -70,7 +91,7 @@ while True:
     if 'Connect to GC' in message:
         logging.info("GC start to connect...")
         # Simulate connecting to GC
-        gc = GC_Connector()  # reopen the peaksimple software before running this command
+        # reopen the peaksimple software before running this command
         main_folder = message.split('mainfolder: ')[1]
         data_path = f'C:\\Peak498Win10\\GCDATA\\{main_folder}'  # Update your folder here
         os.makedirs(data_path, exist_ok=True)
@@ -86,7 +107,7 @@ while True:
         logging.info("GC start loading control files...")
         # Simulate loading control files
         # % Load GC method and update data file saving path in GC
-        ctrl_file = "C:\\Peak498Win10\\GCMETHOD\\Parameter\\0819-2020_90-210C_11min.CON"  # the path of your folder
+        ctrl_file = r"C:\Peak498Win10\GCMETHOD\Parameter\0819-2020_90-210C_11min_Onsite3.CON"  # the path of your folder
         gc.ctrl_file = ctrl_file
         gc.load_ctrl_file()  # Running error but actually successful
         subfolder = message.split('subfolder: ')[1].split(',')[0]
@@ -96,7 +117,7 @@ while True:
             os.makedirs(data_path, exist_ok=True)
         except FileExistsError:
             print(f"The directory {data_path} already exists. Continuing without creating it.")
-        gc.update_gc_settings(data_path)
+        gc.update_gc_settings(data_path, message.split('filename: ')[1])
         # Simulate loading control files
 
         time.sleep(2)
@@ -104,15 +125,14 @@ while True:
         response = "GC control files loaded successfully."
         logging.info("GC completed loading control files.")
 
-    elif 'Wait 180 second and start 2 sample Injections' in message:
-        logging.info("GC waiting 180 seconds before sample injection...")
+    elif 'Wait 360 second and start 1 sample Injections' in message:
+        logging.info("GC waiting 360 seconds before sample injection...")
         # Simulate waiting and starting sample injection
-        gc.sample_set_size = 2
-        time.sleep(180)  # Wait for 180 seconds
+        time.sleep(360)  # Wait for 180 seconds
         gc.set_running()
         # Simulate waiting and starting sample injection
         logging.info("GC started sample injection.")
-        response = "GC started sample injection after 180 seconds."
+        response = "GC started sample injection after 360 seconds."
         logging.info("GC completed sample injection.")
 
 

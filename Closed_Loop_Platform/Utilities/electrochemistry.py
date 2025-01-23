@@ -74,7 +74,7 @@ def LSV_converter_inexp(potential, current, bicarbonate=False):
     Convert LSV from Ag/AgCl to RHE scale
     '''
     evsrhe = potential + 0.205 + (6.8 if bicarbonate else 13.7) * 0.059
-    currend = -current * 2 * 1000  # for 1 cm2 plate. Both side. Unit mA cm-2
+    currend = -current /2 * 1000  # for 1 cm2 plate. Both side. Unit mA cm-2
     # Todo write a file exported as txt.
     return {'potential_RHE': evsrhe, 'current_density': currend}
 
@@ -189,7 +189,7 @@ def LSV_HER(mainpath, sample, note='LSVinKOH', criteria_current=10):
         print(f'Measuring LSV at {sr_lsv} V/s')
         fileName = filename + '_LSV_{:.0f}mVs_Efin_{:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
         header = 'LSV ran at {:.0f} mVs with Efin at {:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
-        lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-4, fileName=fileName,
+        lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-1, fileName=fileName,
                         header=header)  # E to be customized
         lsv.ircomp(Ru=Ru)  # Ru get from EIS
         time.sleep(5)
@@ -274,7 +274,7 @@ def LSV_Regeneration(mainpath, sample, note='LSVinHCO3', Efin_LSV=-2.1, current_
     # Efin_LSV = -2.1
     sr_lsv = 0.050
     max_current = 0
-    plt.figure()
+    plt.figure(figsize=(3.6,3.6))
     plt.xlim(0, -1.75)
     plt.ylim(0, -5.0)
     plt.xlabel('E (V vs. RHE)')
@@ -284,7 +284,7 @@ def LSV_Regeneration(mainpath, sample, note='LSVinHCO3', Efin_LSV=-2.1, current_
         print(f'Measuring LSV at {sr_lsv} V/s')
         fileName = filename + '_LSV_{:.0f}mVs_Efin_{:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
         header = 'LSV ran at {:.0f} mVs with Efin at {:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
-        lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-4, fileName=fileName,
+        lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-1, fileName=fileName,
                         header=header)  # E to be customized
         lsv.ircomp(Ru=Ru)  # Ru get from EIS
         time.sleep(5)
@@ -292,7 +292,7 @@ def LSV_Regeneration(mainpath, sample, note='LSVinHCO3', Efin_LSV=-2.1, current_
         time.sleep(5)
         # plate.stop_stirring()
         data = pstat.LoadLSV(fileName, folder=child_filepath, model=model)
-        lsvrhe = LSV_converter_inexp(data.E, data.i, phosphate=True)
+        lsvrhe = LSV_converter_inexp(data.E, data.i, bicarbonate=True)
         max_current = max(-lsvrhe['current_density'])
         print(lsvrhe['potential_RHE'])
         plt.plot(lsvrhe['potential_RHE'], lsvrhe['current_density'])
@@ -366,7 +366,7 @@ def LSV_fixrange(mainpath:str, sample:str, note='LSVinHCO3', Efin_LSV=-2.3):
     # Efin_LSV = -2.1
     sr_lsv = 0.050
     max_current = 0
-    plt.figure()
+    plt.figure(figsize=(3.6,3.6))
     plt.xlim(0, -2.0)
     plt.ylim(0, -5.0)
     plt.xlabel('E (V vs. RHE)')
@@ -374,7 +374,7 @@ def LSV_fixrange(mainpath:str, sample:str, note='LSVinHCO3', Efin_LSV=-2.3):
     print(f'Measuring LSV at {sr_lsv} V/s')
     fileName = filename + '_LSV_{:.0f}mVs_Efin_{:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
     header = 'LSV ran at {:.0f} mVs with Efin at {:.0f}mV'.format(sr_lsv * 1000, Efin_LSV * 1000)
-    lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-4, fileName=fileName,
+    lsv = pstat.LSV(Eini=-0.6, Efin=Efin_LSV, sr=sr_lsv, dE=0.001, sens=1e-1, fileName=fileName,
                     header=header)  # E to be customized
     lsv.ircomp(Ru=Ru)  # Ru get from EIS
     time.sleep(5)
@@ -382,7 +382,7 @@ def LSV_fixrange(mainpath:str, sample:str, note='LSVinHCO3', Efin_LSV=-2.3):
     time.sleep(5)
     plate.stop_stirring()
     data = pstat.LoadLSV(fileName, folder=child_filepath, model=model)
-    lsvrhe = LSV_converter_inexp(data.E, data.i, phosphate=True)
+    lsvrhe = LSV_converter_inexp(data.E, data.i, bicarbonate=True)
     #ndata_E, ndata_i = LSV_converter_inexp(data.E, data.i, phosphate=True)
     smoothed_x = savgol_filter(np.asarray(lsvrhe['potential_RHE']), window_length=5, polyorder=3, mode='nearest')
     smoothed_y = savgol_filter(np.asarray(lsvrhe['current_density']), window_length=5, polyorder=3, mode='nearest')
@@ -447,17 +447,17 @@ def electrodeposition(mainpath, sample, E_ed, Time_ed, note='Deposition'):
     print('Electrodeposition started.')
     plate.start_stirring()
     time.sleep(15)
-    fileName = sample + '_it_Edep_{:.0f}mV'.format(E_ed * 100)
+    fileName = sample + '_it_Edep_{:.0f}mV'.format(E_ed * 1000)
     header = 'Electrodeposition at potential = {:.1f}mV'.format(E_ed)
-    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-3, fileName=fileName, header=header)  # Todo
+    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-1, fileName=fileName, header=header)  # Todo
     itcurve.ircomp(Ru=Ru)  # Ru get from EIS
     itcurve.run()
     time.sleep(5)
     plate.stop_stirring()
     itcurve_data = pstat.LoadITCURVE(fileName=fileName, folder=child_filepath, model=model)
-    plt.figure()
-    plt.plot(itcurve_data.t, -itcurve_data.i / 0.0706858 * 1000)
-    plt.xlabel('$Time$ / s')
+    plt.figure(figsize=(3.6,3.6))
+    plt.plot(itcurve_data.t, -itcurve_data.i / 2 * 1000)
+    plt.xlabel('Time / s')
     plt.ylabel('Current density (mA cm-2)')
     plt.legend(title=f'E = {E_ed}')
     plt.savefig(child_filepath + '/' + 'ITCURVE' + '.png')
@@ -562,14 +562,14 @@ def insitu_echem_regeneration(mainpath: str):
     7. If rinse_times > 3, the catalyst cannot be removed by regeneration protocol. Error report. and (Supposedly) break function.
     '''
 
-    Rinsing('cell', 'water', 'electrolyte', 3, volume_assigned='50mL')
+    Rinsing('cell', 'water', 'electrolyte',1, volume_assigned='20mL')
     LSV_Regeneration(mainpath, f'Pre-Regen', current_criteria=2, Efin_LSV=-1.9)
     print('Electrode Regeneration start...')
     rinse_times = 1
     onset_array = []
     while rinse_times <= 5:
-        Rinsing('cell','water', 'hno3', acidrinse=True, repetitions=1)
-        Rinsing('cell', 'water', 'electrolyte', 1)
+        Rinsing('cell','water', 'hno3', volume_assigned='20mL', acidrinse=True, repetitions=1)
+        Rinsing('cell', 'water', 'electrolyte',1, volume_assigned='20mL')
         onset = LSV_Regeneration(mainpath, f'{rinse_times}acid', current_criteria=2)
         onset_array.append(onset)
         print('onset_array: ', onset_array)
@@ -643,7 +643,7 @@ def run_CV_HER_lowE(mainpath, sample, Note, sr_cv=50):
 
     cv = pstat.CV(
         Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=10, dE=0.001, sr=sr_cv,
-        sens=1E-3, fileName=fileName, header=cvheader, qt=60
+        sens=1E-1, fileName=fileName, header=cvheader, qt=60
     )
 
     cv.ircomp(Ru=Ru)
@@ -702,7 +702,7 @@ def run_CV_HER_varyE(mainpath, sample, gas, sr_cv=50):
         cvheader = f'CV ran at {sr_cv:.0f} mVs'
         cv = pstat.CV(
             Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=6, dE=0.001, sr=sr_cv/1000,
-            sens=1E-3, fileName=fileName, header=cvheader, qt=60
+            sens=1E-1, fileName=fileName, header=cvheader, qt=60
         )
         cv.ircomp(Ru=Ru)
         time.sleep(5)
@@ -728,7 +728,7 @@ def run_CV_HER_varyE(mainpath, sample, gas, sr_cv=50):
                 cvheader = f'CV ran at {sr:.0f} mVs'
                 cv2 = pstat.CV(
                     Eini=Eini, Ev1=Ev1, Ev2=Ev2, Efin=Efin, nSweeps=2, dE=0.001, sr=sr / 1000,
-                    sens=1E-2, fileName=fileName, header=cvheader, qt=2
+                    sens=1E-1, fileName=fileName, header=cvheader, qt=2
                 )
                 cv2.ircomp(Ru=Ru)
                 time.sleep(5)
@@ -881,9 +881,9 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'
     print('Bulk electrolysis started.')
     plate.start_stirring()
     time.sleep(15)
-    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100) + note
+    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 1000) + note
     header = 'Bulk electrolysis at potential = {:.1f}mV'.format(E_ed)
-    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, folder = child_filepath, sens=1e-3, fileName=fileName, header=header, path_exe=path)  # Todo
+    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, folder = child_filepath, sens=1e-1, fileName=fileName, header=header, path_exe=path)  # Todo
     itcurve.ircomp(Ru=Ru)  # Ru get from EIS
     time.sleep(5)
     itcurve.run()
@@ -891,8 +891,8 @@ def bulk_electrolysis(mainpath, sample, E_ed, Time_ed = 300, note='Electrolysis'
     plate.stop_stirring()
     itcurve_data = pstat.LoadITCURVE(fileName=fileName, folder=child_filepath, model=model)
     plt.figure()
-    plt.plot(itcurve_data.t, -itcurve_data.i / 0.0706858 * 1000)
-    plt.xlabel('$Time$ / s')
+    plt.plot(itcurve_data.t, -itcurve_data.i / 2 * 1000)
+    plt.xlabel('Time / s')
     plt.ylabel('Current density (mA cm-2)')
     plt.legend(title=f'E = {E_ed}')
     plt.savefig(child_filepath + '/' + 'ITCURVE' + '.png')
@@ -936,7 +936,7 @@ def bulk_electrolysis_beforeCP(mainpath, sample, E_ed, Time_ed = 300, note='Elec
 
     return Ru
 
-def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 960, note='Electrolysis'):
+def bulk_electrolysis_CP(mainpath, sample , E_ed, Time_ed = 960, note='Elysis'):
     '''
     This function perform electrodeposition with designated potential and time
     :param mainpath: The dic you want to store your data
@@ -949,35 +949,40 @@ def bulk_electrolysis_CP(mainpath, sample, RU , E_ed, Time_ed = 960, note='Elect
     # CHI Settings
 
 
-    filename = sample
     main_filepath = mainpath
     create_directory(main_filepath)
 
     datetime_str = generate_timestamp()
-    adding = f'{sample}-{datetime_str}-{note}'
+    adding = f'{sample}-{note}'
 
     child_filepath = os.path.join(main_filepath, adding)
     create_directory(child_filepath)
 
     model = 'chi760f'
-    path = 'C:/chi'  # Path to the chi760e.exe
+    path = 'C:/chi'
     pstat.Setup(model=model, path_exe=path, folder=child_filepath)
+
+    stirring(plate, 30)
+    time.sleep(30)
+
+    ocp_data_E = getOCP(child_filepath)
+    Ru = getRu(child_filepath, ocp_data_E)
 
     # deposition start
     print('Bulk electrolysis started.')
     plate.start_stirring()
     time.sleep(15)
-    fileName = sample + '_it_Elysis_{:.0f}mV'.format(E_ed * 100) + note
+    fileNAME = sample + 'CP_{:.0f}mV'.format(E_ed * 1000) + note
     header = 'Bulk electrolysis at potential = {:.1f}mV'.format(E_ed)
-    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-3, fileName=fileName, header=header)  # Todo
-    itcurve.ircomp(Ru=RU)  # Ru get from EIS
+    itcurve = pstat.i(Eini=E_ed, dt=0.1, ttot=Time_ed, sens=1e-1, fileName=fileNAME, header=header)  # Todo
+    itcurve.ircomp(Ru=Ru)  # Ru get from EIS
     itcurve.run()
     time.sleep(5)
     plate.stop_stirring()
-    itcurve_data = pstat.LoadITCURVE(fileName=fileName, folder=child_filepath, model=model)
-    plt.figure()
-    plt.plot(itcurve_data.t, -itcurve_data.i / 0.0706858 * 1000)
-    plt.xlabel('$Time$ / s')
+    itcurve_data = pstat.LoadITCURVE(fileName=fileNAME, folder=child_filepath, model=model)
+    plt.figure(figsize=(3.6,3.6))
+    plt.plot(itcurve_data.t, -itcurve_data.i * 1000 / 2)
+    plt.xlabel('Time / s')
     plt.ylabel('Current density (mA cm-2)')
     plt.legend(title=f'E = {E_ed}')
     plt.savefig(child_filepath + '/' + 'ITCURVE' + '.png')

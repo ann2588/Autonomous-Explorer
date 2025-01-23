@@ -1,17 +1,18 @@
 #%%
-from Closed_Loop_Platform.Utilities.gashandling import *
-from Closed_Loop_Platform.Communication.gasanalyzer import *
+#from Closed_Loop_Platform.Utilities.gashandling import *
+#from Closed_Loop_Platform.Communication.gasanalyzer import *
 
 
 #%%
 import sys, glob, os
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import * 
 
 #%% Parameter setting
 main_folder = '2024-12-24_wholerange2'  # Enter the name of your folder
 gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1, 0.5, 0.2, 0.05, 0.01] #Enter the ratio you want to try in list
 
+'''
 #%% GC method setting
 gc = GC_Connector() #reopen the peaksimple software before running this command
 data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
@@ -75,7 +76,7 @@ def start_measuring_calibration_curve(data_path = data_path):
 
     except Exception as e:
         print(f"Error occurred: {e}")
-
+'''
 #%%
 def DataProcessing(path = str):
     '''
@@ -92,7 +93,7 @@ def DataProcessing(path = str):
     7. Save the slope and intercept and r square in different csv file.
     '''
     os.chdir(data_path)
-    folders = [folder for folder in os.listdir() if folder != ".DS_Store" and folder != "Archive" and not folder.endswith('.png') and not folder.endswith('.csv')]
+    folders = [folder for folder in os.listdir() if folder != ".DS_Store" and folder != "Archive" and not folder.endswith('.png') and not folder.endswith('.csv') and not folder.endswith('.CON')]
     for folder in folders:
         process_asc_files(folder)
         os.chdir(data_path)
@@ -102,7 +103,8 @@ def DataProcessing(path = str):
         files = glob.glob(f"peak_data*")
         peak_areas = {
             'H2 as TCD': 0,
-            'CO as FID': 0
+            'CO as FID': 0,
+            'CH4 as FID': 0
         }
 
         for file in files:
@@ -113,13 +115,28 @@ def DataProcessing(path = str):
             else:
                 continue
 
+            # Read the file and extract peak area
             test_df = pd.read_csv(file)
-            peak_areas[peak_name] = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
-        concentration = float(str(folder))
-        data.append([concentration, peak_areas.get('H2 as TCD', 0), peak_areas['CO as FID']])  # Default to 0 if 'H2 as TCD' not found
+            if 'Peak Name' in test_df.columns and 'Peak Area' in test_df.columns:
+                matching_rows = test_df[test_df['Peak Name'] == peak_name]
+                if not matching_rows.empty:
+                    peak_areas[peak_name] = matching_rows['Peak Area'].iloc[0]
+
+        try:
+            concentration = float(folder)  # Ensure folder name can be converted to float
+        except ValueError:
+            concentration = 0.0  # Default to 0 if conversion fails
+
+        data.append([
+            concentration,
+            peak_areas.get('H2 as TCD', 0),
+            peak_areas.get('CO as FID', 0),
+            peak_areas.get('CH4 as FID', 0)
+        ])
         os.chdir('..')
 
-    df = pd.DataFrame(data, columns=['Concentration', 'Peak Area H2', 'Peak Area CO'])
+
+    df = pd.DataFrame(data, columns=['Concentration', 'Peak Area H2', 'Peak Area CO', 'Peak Area CH4'])
     df = df.sort_values(by='Concentration')
     df['Concentration'] = df['Concentration']*0.01*10000*0.1
 
@@ -130,8 +147,10 @@ def DataProcessing(path = str):
     # Perform linear regression for the whole concentration range for both H2 and CO
     slope_H2, intercept_H2, r_value_H2, p_value_H2, std_err_H2 = linregress(df['Concentration'], df['Peak Area H2'])
     slope_CO, intercept_CO, r_value_CO, p_value_CO, std_err_CO = linregress(df['Concentration'], df['Peak Area CO'])
+    slope_CH4, intercept_CH4, r_value_CH4, p_value_CH4, std_err_CH4 = linregress(df['Concentration'], df['Peak Area CH4'])
     print(f"Slope H2: {slope_H2}, Intercept H2: {intercept_H2}, R^2 H2: {r_value_H2**2:.2f}")
     print(f"Slope CO: {slope_CO}, Intercept CO: {intercept_CO}, R^2 CO: {r_value_CO**2:.2f}")
+    print(f"Slope CH4: {slope_CH4}, Intercept CH4: {intercept_CH4}, R^2 CH4: {r_value_CH4 ** 2:.2f}")
 
     # Plot the result for the whole concentration range for both H2 and CO
     plt.figure(figsize=(3.6, 3.6))
@@ -140,9 +159,21 @@ def DataProcessing(path = str):
     plt.xlabel('Concentration (ppm)')
     plt.ylabel('Peak Area')
     plt.legend()
-    plt.text(0.1, 0.1, f"CO Slope: {slope_CO: .2f}\nCO Intercept: {intercept_CO: .2f}\nCOR ^ 2: {r_value_CO ** 2: .2f}")
+    #plt.text(0.1, 0.1, f"CO Slope: {slope_CO: .2f}\nCO Intercept: {intercept_CO: .2f}\nCOR ^ 2: {r_value_CO ** 2: .2f}")
     plt.title('Linear Regression of CO Peak Area over Concentration')
     plt.savefig('LR_whole_range_CO.png', dpi = 600)
+    plt.show()
+
+    # Plot the result for the whole concentration range for both H2 and CO
+    plt.figure(figsize=(3.6, 3.6))
+    plt.scatter(df['Concentration'], df['Peak Area CH4'], label='CH4')
+    plt.plot(df['Concentration'], intercept_CH4 + slope_CH4 * df['Concentration'], 'b', label='CH4 Regression')
+    plt.xlabel('Concentration (ppm)')
+    plt.ylabel('Peak Area')
+    plt.legend()
+    #plt.text(0.1, 0.1, f"CH4 Slope: {slope_CH4: .2f}\nCO Intercept: {intercept_CH4: .2f}\nCH4R ^ 2: {r_value_CH4 ** 2: .2f}")
+    plt.title('Linear Regression of CH4 Peak Area over Concentration')
+    plt.savefig('LR_whole_range_CH4.png', dpi=600)
     plt.show()
 
     # Plot the result for the whole concentration range for both H2 and CO
@@ -152,7 +183,7 @@ def DataProcessing(path = str):
     plt.xlabel('Concentration (ppm)')
     plt.ylabel('Peak Area')
     plt.legend()
-    plt.text(0.1, 0.1, f"H2 Slope: {slope_H2:.2f}\nH2 Intercept: {intercept_H2:.2f}\nH2 R^2: {r_value_H2 ** 2:.2f}")
+    #plt.text(0.1, 0.1, f"H2 Slope: {slope_H2:.2f}\nH2 Intercept: {intercept_H2:.2f}\nH2 R^2: {r_value_H2 ** 2:.2f}")
     plt.title('Linear Regression of H2 Peak Area over Concentration')
     plt.savefig('LR_whole_range_H2.png', dpi=600)
     plt.show()
@@ -161,9 +192,9 @@ def DataProcessing(path = str):
 
     # Store the slope and intercept for the whole concentration range in another CSV for both H2 and CO
     calibration_data = pd.DataFrame({
-        'Product': ['H2', 'CO'],
-        'Slope': [slope_H2, slope_CO],
-        'Intercept': [intercept_H2, intercept_CO]
+        'Product': ['H2', 'CO', 'CH4'],
+        'Slope': [slope_H2, slope_CO, slope_CH4],
+        'Intercept': [intercept_H2, intercept_CO, intercept_CH4]
     })
     datetime_str = datetime.now().strftime('%Y-%m-%d')
     calibration_filename = f"GC calibration - {datetime_str}.csv"
@@ -193,5 +224,5 @@ if __name__ == "__main__":
     #    print('Still baking. Wait for another minute.')
     #    time.sleep(60)
     DataProcessing(data_path)
-    script_path = "/Closed_Loop_Platform/Utilities/slack-bot.py"
-    os.system(f'python {script_path} -m "Baking completed. Please turn off FID manually"')
+    #script_path = "/Closed_Loop_Platform/Utilities/slack-bot.py"
+    #os.system(f'python {script_path} -m "Baking completed. Please turn off FID manually"')

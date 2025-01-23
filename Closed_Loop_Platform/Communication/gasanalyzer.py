@@ -25,7 +25,7 @@ import Peaksimple  # Need add assembly before import. # noqa # type: ignore
 
 # TODO some control file needs to be placed within package to work w/ any user.
 # the default won't run from the repo for some reason
-default_ctrl_file = os.path.join(dir_path, 'DEFAULT.CON')
+default_ctrl_file = r"C:\Peak498Win10\GCMETHOD\Parameter\0819-2020_90-210C_11min_Onsite3.CON"
 
 class GC_Connector():
     """
@@ -110,7 +110,7 @@ class GC_Connector():
 
     # Methods:
     # --------
-    def update_gc_settings(self, data_file_path):
+    def update_gc_settings(self, data_file_path, filename = ''):
         """
         Write over the currently loaded ctrl file to update settings.
 
@@ -138,7 +138,7 @@ class GC_Connector():
                             + str(self.sample_set_size) + '\n')
 
                 elif re.search('<CHANNEL 1 FILE>=', line):
-                    line = ('<CHANNEL 1 FILE>=FID\n')
+                    line = (f'<CHANNEL 1 FILE>=FID_{filename}.ASC\n')
                 elif re.search('<CHANNEL 1 POSTRUN SAVE DATA>=', line):
                     line = ('<CHANNEL 1 POSTRUN SAVE DATA>=1\n')
                 elif re.search('<CHANNEL 1 POSTRUN SAVE RESULTS>=', line):
@@ -156,7 +156,7 @@ class GC_Connector():
                             + str(post_time) + '\n')
 
                 elif re.search('<CHANNEL 2 FILE>=', line):
-                    line = ('<CHANNEL 2 FILE>=TCD\n')
+                    line = (f'<CHANNEL 2 FILE>=TCD_{filename}.ASC\n')
                 elif re.search('<CHANNEL 2 POSTRUN SAVE DATA>=', line):
                     line = ('<CHANNEL 2 POSTRUN SAVE DATA>=1\n')
                 elif re.search('<CHANNEL 2 POSTRUN SAVE RESULTS>=', line):
@@ -173,7 +173,7 @@ class GC_Connector():
         print(self.ctrl_file)
         self.load_ctrl_file()
 
-    def load_ctrl_file(self, max_tries=3):
+    def load_ctrl_file(self, max_tries=5):
         """
         Load a new ctrl file to the GC based on .ctrl_file attr.
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
     print(dir_path)
     ctrl_file = 'C:\\Peak498Win10\\GCMETHOD\\0819-2020_90-210C_11min.CON'
     gc = GC_Connector()
-    data_path = 'C:\\Peak489Win10\\GCDATA\\20221117_CodeTest'
+    data_path = 'C:\\Peak489Win10\\GCDATA\\20250122_ControlTest'
     gc.sample_set_size = 2
     gc.update_gc_settings(data_path)
     # gc1.set_running()

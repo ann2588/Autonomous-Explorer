@@ -29,9 +29,10 @@ def readpoint(data:str, flowcontroller):
     return read
 
 #%%
-def control_gas_flow(flow_controller, operation='open', flow_rate=30, pressure=20):
+def control_gas_flow(flow_controller, operation='open', flow_rate=30, pressure=30):
     if operation == 'open':
         flow_controller.set_flow_rate(flow_rate)
+        flow_controller.set_pressure(pressure)
         print(f"Flow rate set to {flow_rate} sccm.")
     elif operation == 'close':
         flow_controller.set_flow_rate(0)
@@ -41,17 +42,25 @@ def control_gas_flow(flow_controller, operation='open', flow_rate=30, pressure=2
         print(f"Pressure set to {pressure}.")
     else:
         raise AssertionError('Please provide a valid command to MFC.')
-def control_co2_ar_ratio(co2_ratio):
-    total_flow_rate = 30
+def control_co2_ar_ratio(co2_ratio, flowrate = 30):
+    total_flow_rate = flowrate
     flow_co2 = total_flow_rate * (co2_ratio / 100)
     flow_ar = total_flow_rate - flow_co2
 
     mfc_co2.set_flow_rate(flow_co2)
     mfc_ar.set_flow_rate(flow_ar)
-    mfc_co2ar.set_flow_rate(total_flow_rate)
+    mfc_co2ar.set_flow_rate(total_flow_rate*0.33)
+    mfc_co2ar.set_pressure(pressure = 20)
     print(f"CO2 flow: {flow_co2} sccm, Ar flow: {flow_ar} sccm")
 
 def close_all_gas():
     mfc_ar.set_flow_rate(0)
     mfc_co2.set_flow_rate(0)
     mfc_co2ar.set_flow_rate(0)
+
+def read_all_gas():
+    print('Reading values:')
+    print(f'Ar flow rate: {readpoint("mass_flow", mfc_ar)}')
+    print(f'CO2 flow rate: {readpoint("mass_flow", mfc_co2)}')
+    print(f'Gas flow into cell: {readpoint("mass_flow", mfc_co2ar)}')
+    print(f'Total flow into GC: {readpoint("mass_flow", mfm)}')

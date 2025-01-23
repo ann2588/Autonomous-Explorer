@@ -11,7 +11,7 @@ from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_fi
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/DryRun_withDeposition"
-Calibration_file = glob.glob(r"/Users/Yi-An/Software/PycharmProjects/CO2Optimizer/Closed_Loop_Platform/DataProcessing/GC calibration*")
+Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2024-12-24.csv"
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -22,7 +22,7 @@ class DataProcessing:
         # Assigning calibration parameters
         if not self.calibration_file:
             raise ValueError("No calibration file found.")
-        df_cali = pd.read_csv(self.calibration_file[0])  # Assuming the first file in the list is the correct one
+        df_cali = pd.read_csv(self.calibration_file)  # Assuming the first file in the list is the correct one
         products = ['CO', 'H2']
         for product in products:
             slope, intercept = df_cali.loc[df_cali['Product'] == product, ['Slope', 'Intercept']].iloc[0]

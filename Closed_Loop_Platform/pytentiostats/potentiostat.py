@@ -45,7 +45,7 @@ def run_command_with_timer(command, filename):
                     os.system('taskkill /F /IM chi760f.exe')
                 print('Quit chi760f.exe')
 
-            if elapsed_time > 500*(repeat_time):
+            if elapsed_time > 1500*(repeat_time):
                 if os.system('tasklist | find "chi760f.exe"') == 0:
                     os.system('taskkill /F /IM chi760f.exe')
                 os.system(f'python C:/Users/guazh/PycharmProjects/AutoHeteroCata/slack-bot.py -m "CHI error, duration>500s"')

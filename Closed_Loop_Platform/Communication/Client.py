@@ -3,6 +3,8 @@ import subprocess
 import time
 import socket
 
+# Global variable for the client socket
+client_socket = None
 # Assume the print() will be overwrite by logging.info
 
 def initialize_socket():
@@ -75,7 +77,7 @@ def should_close_socket(RESPONSE):
     """Define the logic to determine whether the socket should be closed."""
     close_or_not = True if RESPONSE != None else False
     return close_or_not  # Example: Keep the socket open
-#%%
+
 
 def SendCommandToGC(COMMAND):
     global client_socket
@@ -94,8 +96,6 @@ def SendCommandToGC(COMMAND):
     except Exception as e:
         print(f"Error while sending command: {e}")
         client_socket = None  # Mark socket as closed
-
-import socket
 
 def CheckSignalFromGC():
     global client_socket, logging
