@@ -49,8 +49,8 @@ def control_co2_ar_ratio(co2_ratio, flowrate = 30):
 
     mfc_co2.set_flow_rate(flow_co2)
     mfc_ar.set_flow_rate(flow_ar)
-    mfc_co2ar.set_flow_rate(total_flow_rate*0.33)
-    mfc_co2ar.set_pressure(pressure = 20)
+    mfc_co2ar.set_flow_rate(total_flow_rate*0.8)
+    mfc_co2ar.set_pressure(pressure = 14.6)
     print(f"CO2 flow: {flow_co2} sccm, Ar flow: {flow_ar} sccm")
 
 def close_all_gas():

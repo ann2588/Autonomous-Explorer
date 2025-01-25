@@ -90,7 +90,7 @@ def run_experiment(exp, exp_path, expn):
     close_all_gas()
 
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=10)
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=11)
     time.sleep(180)
     print('Purging gas for 3 minutes')
 
@@ -118,7 +118,7 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
 
     read_all_gas()
     svoltage = str(voltage).replace('.', 'p')
-    SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{exp['CO2ratio']}CO2_{svoltage}")
+    SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{int(exp['CO2ratio'])}CO2_{svoltage}")
 
     if wait_for_gc_signal():
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
@@ -145,7 +145,7 @@ def wait_for_gc_signal(timeout=300):
 
 
 #%% Initialization
-mainfold = 'StageTest_0122'
+mainfold = 'StageTest_0122_2'
 DPAgent = DataProcessing()
 initialization = True
 """Main function to orchestrate the CO2 optimization experiments."""
@@ -166,7 +166,7 @@ LOG.setup_logging_for_experiment(expn)
 print(f"Next epxeriment: {expn}")
 print(f"Next condition: {exp}")
 
-subfold = f"{datetime.now().strftime('%Y-%m-%d')}-{expn}"
+subfold = f"{expn}"
 exp_path = f"{base_path}/{subfold}"
 create_directory(exp_path)
 
@@ -176,12 +176,13 @@ print(f'Running {expn}...')
 
 #%% Stage 1: Cu Catalyst Deposition
 print('Start Cu catalyst deposition')
+#PlatingSolutionFormulation(0.5)  # Formulate DOE files
 PlatingSolutionFormulation(exp['CuConc'])  # Formulate DOE files
 #control_co2_ar_ratio(0, flowrate = 1)
 stirring(plate, 60)
 deposit_v, deposit_t = exp['Volt'], exp['Time']
 #%%
-electrodeposition(exp_path, f'{expn}Deposition', deposit_v, deposit_t)
+electrodeposition(exp_path, f'{expn}', deposit_v, deposit_t)
 Rinsing('cell', 'spelec', 'spelec', 1)
 print('Finish Cu catalyst deposition')
 os.system(f'python {script_path} -m "{"Finish Cu catalyst deposition"}"')
@@ -197,16 +198,25 @@ plate.start_stirring()
 close_all_gas()
 
 # run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-control_co2_ar_ratio(exp['CO2ratio'],flowrate = 1)
-time.sleep(180)
-print('Purging gas for 3 minutes')
-
-potential_windows = [-1.8, -2.0, -2.2, -2.4, -2.6]  # Pending determination
-
+control_co2_ar_ratio(100,flowrate = 5)
+#time.sleep(180)
+#print('Purging gas for 3 minutes')
+#%%
+#potential_windows = [-1.8, -2.0, -2.2, -2.4, -2.6]  # Pending determination
+potential_windows = [-2.0]  # Pending determination
+SendCommandToGC("Is GC still running?")
+time.sleep(2)
+if wait_for_gc_signal():
+    print("GC finished measurement. Proceed to next experiment.")
 for voltage in potential_windows:
     execute_bulk_electrolysis(exp, exp_path, expn, voltage)
+    SendCommandToGC("Is GC still running?")
+    if wait_for_gc_signal():
+        print("GC finished measurement. Proceed to next experiment.")
 
-#% Stage 4: Electrode regeneration
+
+
+#%% Stage 4: Electrode regeneration
 messages = ['Start electrode regeneration', 'Finish electrode regeneration']
 for i, message in enumerate(messages):
     print(message)
@@ -251,7 +261,7 @@ if wait_for_gc_signal():
 # Example Usage
 if __name__ == "__main__":
     #%%
-    main_folder = '20250122-StageTest'
+    main_folder = '20250122-StageTest-2'
     DPAgent = DataProcessing()
     #CO2Optimizer(main_folder, exp_dicts, initialization=True)
 

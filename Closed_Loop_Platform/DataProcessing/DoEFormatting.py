@@ -2,7 +2,7 @@
 import pandas as pd
 import numpy as np
 
-doepath = r"Closed_Loop_Platform/DoERandomBatch10.csv" # PLACE THE PATH OF YOUR DoE.csv here
+
 def doeprocess(doepath: str):
     '''
     This function processes the provided DoE in a CSV file into dictionaries for CuDep, CO2ratio, and IL.
@@ -21,5 +21,6 @@ def doeprocess(doepath: str):
     return exp_dicts
 
 if __name__ == '__main__':
+    doepath = r"Closed_Loop_Platform/DoERandomBatch10.csv"  # PLACE THE PATH OF YOUR DoE.csv here
     exp_dicts = doeprocess(doepath)
     print(exp_dicts)

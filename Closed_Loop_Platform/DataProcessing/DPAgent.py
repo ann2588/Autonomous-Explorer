@@ -10,8 +10,8 @@ from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_fi
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-Master_folder = r"/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/DryRun_withDeposition"
-Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2024-12-24.csv"
+Master_folder = r"C:\Users\guazh\data\StageTest_0122_2"
+Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2025-01-24.csv"
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -60,34 +60,45 @@ class DataProcessing:
         """
         Extract and plot the catalysis current over time for a given experiment.
         """
+        exp_folder = os.path.join(Master_folder, f'EXP{self.exp_num:04d}')
+        if not os.path.isdir(exp_folder):
+            raise FileNotFoundError(f"Folder '{exp_folder}' does not exist under '{self.master_folder}'.")
+
+
         self.gtdata()
         dirs = [d for d in glob.glob(f"*EXP{self.exp_num:04d}*") if not d.endswith('.log')]  # Find directories matching the experiment number and exclude those ending with .log
         os.chdir(dirs[0] if dirs else None)  # Change to the first matching directory if found
         dirs = glob.glob(f"*CO2*")  # Find directories related to CO2 and step 1
-        dir = [d for d in dirs if "GC" not in d]  # Filter out directories containing "GC"
-        os.chdir(dir[0] if dir else None)  # Change to the first matching directory if found
-        file = glob.glob(f"*_it_Elysis_*.txt")  # Find the file containing the catalysis current data
-        skiprow = self.fdtitle("Time/sec, Current/A", file[0])  # Find the line number where the data starts
-        titles = ['Time second', 'Current A']  # Column titles for the DataFrame
-        itcurve = pd.read_csv(file[0], skiprows=skiprow-1, header=0, names=titles)  # Read the data into a DataFrame
+        dirss = [d for d in dirs if "GC" not in d]  # Filter out directories containing "GC"
+        print(dirss)
+        for dir in dirss:
+            os.chdir(dir if dir else None)  # Change to the first matching directory if found
+            file = glob.glob(f"*CP*.txt")  # Find the file containing the catalysis current data
+            skiprow = self.fdtitle("Time/sec, Current/A", file[0])  # Find the line number where the data starts
+            titles = ['Time second', 'Current A']  # Column titles for the DataFrame
+            itcurve = pd.read_csv(file[0], skiprows=skiprow-1, header=0, names=titles)  # Read the data into a DataFrame
 
-        def plotxy():
-            """
-            Plot the catalysis current over time.
-            """
-            plt.figure(figsize=(3.6, 3.6))  # Set the figure size
-            plt.plot(itcurve['Time second'], itcurve['Current A'], marker='o', linestyle='-', color='b')  # Plot the data
-            plt.title('Catalysis Current Over Time')  # Set the title
-            plt.xlabel('Time (seconds)')  # Set the x-axis label
-            plt.ylabel('Current (A)')  # Set the y-axis label
-            plt.grid(True)  # Show the grid
-            plt.savefig(os.path.join(os.getcwd(), f'{dir[0]}.png'), dpi=600)  # Save the plot
-            plt.show()  # Show the plot
+            def plotxy(x, y):
+                """
+                Plot the catalysis current over time.
+                """
+                plt.figure(figsize=(3.2,3.2))  # Set the figure size
+                plt.plot(x, y, linestyle='-', color='b')  # Plot the data
+                plt.title('Bulk electrolysis')  # Set the title
+                plt.xlabel('Time (seconds)')  # Set the x-axis label
+                plt.ylabel('Current (mA)')  # Set the y-axis label
+                plt.xticks(range(0, int(max(itcurve['Time second'])) + 1, 100))
+                plt.ylim((0, 100))
+                plt.tight_layout()
+                plt.savefig(os.path.join(os.getcwd(), f'{dir[0]}.png'), dpi=600)  # Save the plot
+                plt.show()  # Show the plot
 
-        plotxy()
-        last_30_seconds = itcurve[itcurve['Time second'] >= itcurve['Time second'].max() - 30]
-        average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
-        #print(f'Average Current: {average_current} A')  # Print the average current
+            plotxy(itcurve['Time second'], itcurve['Current A']*1000)
+            last_30_seconds = itcurve[itcurve['Time second'] >= itcurve['Time second'].max() - 30]
+            average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
+            print(f'Average Current: {average_current:.2e} A')  # Print the average current
+            os.chdir('..')
+
         return average_current  # Return the average current
 
     def extract_faradaic_efficienty(self, current):
@@ -98,65 +109,69 @@ class DataProcessing:
         dirs = [d for d in glob.glob(f"*EXP{self.exp_num:04d}*") if not d.endswith('.log')]  # Find directories matching the experiment number and exclude those ending with .log
         os.chdir(dirs[0] if dirs else None)  # Change to the first matching directory if found
         dir = glob.glob(f"GC*")  # Find directories related to CO2 and step 1
-        
-        process_asc_files(dir[0]) # this will generate 2 csv file with integral area of every peak
-        os.chdir(dir[0])
-        files = glob.glob(f"peak_data*")
-        area_CO = 0
-        area_H2 = 0
-        peak_areas = {
-            'H2 as TCD': 0,
-            'CO as FID': 0
-        }
+        print(dir)
 
-        for file in files:
-            if "TCD" in file:
-                peak_name = 'H2 as TCD'
-            elif "FID" in file:
-                peak_name = 'CO as FID'
-            else:
-                continue
 
-            try:
-                test_df = pd.read_csv(file)
-                peak_area = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
-                peak_areas[peak_name] = peak_area
-            except IndexError:
-                print(f"No peak found for {peak_name}. Assuming 0 concentration.")
-                peak_areas[peak_name] = 0
+        for d in dir:
+            print(d)
+            process_asc_files(d)  # this will generate 2 csv file with integral area of every peak
+            os.chdir(d)
+            files = glob.glob(f"peak_data*")
+            area_CO = 0
+            area_H2 = 0
+            peak_areas = {
+                'H2 as TCD': 0,
+                'CO as FID': 0
+            }
 
-        conc_H2 = peak_areas['H2 as TCD'] and (peak_areas['H2 as TCD'] - self.intercept_H2) / self.slope_H2 or 0  # ppm
-        conc_CO = peak_areas['CO as FID'] and (peak_areas['CO as FID'] - self.intercept_CO) / self.slope_CO or 0  # ppm
-        print(f'  Area H2: {peak_areas["H2 as TCD"]}; Area CO: {peak_areas["CO as FID"]}')
-        #print(f'Concentration H2: {conc_H2}; Concentration CO: {conc_CO}.')
+            for file in files:
+                if "TCD" in file:
+                    peak_name = 'H2 as TCD'
+                elif "FID" in file:
+                    peak_name = 'CO as FID'
+                else:
+                    continue
 
-        # Convert concentration from ppm to molarity (mol/L)
-        # Assuming the gas density is approximately 1.225 kg/m^3 for air at room temperature
-        # and using the molar mass of CO (28.01 g/mol) and H2 (2.02 g/mol)
-        molarity_CO = conc_CO * 1e-6  # Convert ppm to mol/L
-        molarity_H2 = conc_H2 * 1e-6  # Convert ppm to mol/L
+                try:
+                    test_df = pd.read_csv(file)
+                    peak_area = test_df.loc[test_df['Peak Name'] == peak_name, 'Peak Area'].iloc[0]
+                    peak_areas[peak_name] = peak_area
+                except IndexError:
+                    print(f"No peak found for {peak_name}. Assuming 0 concentration.")
+                    peak_areas[peak_name] = 0
 
-        FECO = molarity_CO * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
-        FEH2 = molarity_H2 * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
+            #conc_H2 = peak_areas['H2 as TCD'] and (peak_areas['H2 as TCD'] - self.intercept_H2) / self.slope_H2 or 0  # ppm
+            conc_CO = peak_areas['CO as FID'] and (peak_areas['CO as FID'] - self.intercept_CO) / self.slope_CO or 0  # ppm
+            #print(f'  Area H2: {peak_areas["H2 as TCD"]}; Area CO: {peak_areas["CO as FID"]}')
+            print(f'Area CO: {peak_areas["CO as FID"]:.2f}')
+            #print(f'Concentration H2: {conc_H2}; Concentration CO: {conc_CO}.')
 
-        return FECO, FEH2
+            # Convert concentration from ppm to molarity (mol/L)
+            # Assuming the gas density is approximately 1.225 kg/m^3 for air at room temperature
+            # and using the molar mass of CO (28.01 g/mol) and H2 (2.02 g/mol)
+            molarity_CO = conc_CO * 1e-6  # Convert ppm to mol/L
+            #molarity_H2 = conc_H2 * 1e-6  # Convert ppm to mol/L
+
+            FECO = molarity_CO * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
+            #
+            os.chdir('..')
+        return FECO
 
     def display_result(self):
         current = self.extract_catalysis_current()
-        FECO, FEH2 = self.extract_faradaic_efficienty(current)
+        FECO = self.extract_faradaic_efficienty(current)
 
         # now I got the output data, current, FECO, FEH2. I want to build a table with input and output data as follow:
-        # f"*EXP{self.exp_num:04d}*", CuConc, DepositionVoltage, Deposition time,  CO2ratio, IL1, IL2, IL3, IL4, IL5, blamk, catalysis potential, Catalysis Current density, FECO, FEH2, 
-
+        # f"*EXP{self.exp_num:04d}*", CuConc, DepositionVoltage, Deposition time,  CO2ratio, IL1, IL2, IL3, IL4, IL5, blamk, catalysis potential, Catalysis Current density, FECO, FEH2,
         print(f"  Average Current: {current:.2e} A")
         print(f"  Faradaic Efficiency CO: {FECO:.2f}")
-        print(f"  Faradaic Efficiency H2: {FEH2:.2f}")
-        output = [current, FECO, FEH2]
-        return current, FECO, FEH2
-    
+        return current, FECO
+
     def encode(self, x):
         id = f"EXP{self.exp_num:04d}"
-        current, FECO, FEH2 = self.display_result()
+        # Check if folder exists, raise error if not
+
+        current, FECO = self.display_result()
         
         new_row_data = {
             'ExpID': id, 
@@ -170,13 +185,12 @@ class DataProcessing:
             'IL4': x['IL4'], 
             'IL5': x['IL5'], 
             'blank': x['blank'], 
-            'catalysis potential': -1.6, 
+            'catalysis potential': -2.0,
             'Catalysis Current': current, 
-            'FECO': FECO, 
-            'FEH2': FEH2
+            'FECO': FECO
         }
 
-        bulk_electrolysis_potential = -1.6
+        bulk_electrolysis_potential = -2.0
 
         if self.database.empty:
             self.database = pd.DataFrame([new_row_data])
@@ -190,12 +204,21 @@ class DataProcessing:
 
         return bulk_electrolysis_potential, current, FECO
 
-'''
-DataAgent = DataProcessing(Master_folder, Calibration_file)
 
-# for batch processing
-for i in range(1,3):
-    DataAgent.exp_num = i
-    print(i)
-    DataAgent.display_result()
-'''
+
+if 'main' in __name__:
+    DataAgent = DataProcessing(Master_folder, Calibration_file)
+    # for batch processing
+    doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
+    from Closed_Loop_Platform.DataProcessing.DoEFormatting import *
+    exp_dicts = doeprocess(doepath)
+    for expn, exp in exp_dicts.items():
+        expn = expn
+        exp = exp
+        DataAgent.exp_num = int(expn[3:])
+        print(DataAgent.exp_num)
+        try:
+            DataAgent.display_result()
+        except FileNotFoundError as e:
+            print(e)
+        bulk_electrolysis_potential, current_density, FECO = DataAgent.encode(expn)

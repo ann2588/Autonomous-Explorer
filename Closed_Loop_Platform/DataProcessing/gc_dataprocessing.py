@@ -131,7 +131,7 @@ def process_asc_files(folder_path):
 
 
     '''
-    asc_files = [f for f in os.listdir(folder_path) if f.endswith('01..ASC')] # Currently process only one electrolysis. Pending post analysis.
+    asc_files = [f for f in os.listdir(folder_path) if f.endswith('.ASC')] # Currently process only one electrolysis. Pending post analysis.
     #print(asc_files)
 
     for i, file_name in enumerate(asc_files, start=1):
