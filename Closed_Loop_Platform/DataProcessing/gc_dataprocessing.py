@@ -108,7 +108,7 @@ def analyze_intensity(data, column_name, output_filename):
     combined_corrected = np.concatenate((combined_corrected, region2_corrected))
 
     # General peak detection for Region 1 and Region 2
-    peaks_region1, _ = find_peaks(region1_corrected, height=0.05, width=(0.5,80), prominence=0.5)
+    peaks_region1, _ = find_peaks(region1_corrected, height=0.1, width=(0.5,100), prominence=0.3)
     peaks_region2, _ = find_peaks(region2_corrected, height=3, width=(5, 40), prominence=6)
     peaks_region2_adjusted = [int(peak + region_cutoff+40) for peak in peaks_region2]
 

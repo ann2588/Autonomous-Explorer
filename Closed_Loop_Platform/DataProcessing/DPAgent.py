@@ -11,7 +11,7 @@ from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_fi
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 Master_folder = r"C:\Users\guazh\data\StageTest_0122_2"
-Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2025-01-24.csv"
+Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2025-01-26.csv"
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -60,7 +60,7 @@ class DataProcessing:
         """
         Extract and plot the catalysis current over time for a given experiment.
         """
-        exp_folder = os.path.join(Master_folder, f'EXP{self.exp_num:04d}')
+        exp_folder = os.path.join(self.master_folder, f'EXP{self.exp_num:04d}')
         if not os.path.isdir(exp_folder):
             raise FileNotFoundError(f"Folder '{exp_folder}' does not exist under '{self.master_folder}'.")
 
@@ -94,7 +94,7 @@ class DataProcessing:
                 plt.show()  # Show the plot
 
             plotxy(itcurve['Time second'], itcurve['Current A']*1000)
-            last_30_seconds = itcurve[itcurve['Time second'] >= itcurve['Time second'].max() - 30]
+            last_30_seconds = itcurve[itcurve['Time second'] <= itcurve['Time second'].max() - 400]
             average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
             print(f'Average Current: {average_current:.2e} A')  # Print the average current
             os.chdir('..')
@@ -163,8 +163,8 @@ class DataProcessing:
 
         # now I got the output data, current, FECO, FEH2. I want to build a table with input and output data as follow:
         # f"*EXP{self.exp_num:04d}*", CuConc, DepositionVoltage, Deposition time,  CO2ratio, IL1, IL2, IL3, IL4, IL5, blamk, catalysis potential, Catalysis Current density, FECO, FEH2,
-        print(f"  Average Current: {current:.2e} A")
-        print(f"  Faradaic Efficiency CO: {FECO:.2f}")
+        print(f"  Average Current: {current*1000:.2f} mA")
+        print(f"  Faradaic Efficiency CO: {FECO*100:.2f} %")
         return current, FECO
 
     def encode(self, x):
@@ -175,7 +175,7 @@ class DataProcessing:
         
         new_row_data = {
             'ExpID': id, 
-            'CuConc': x['CuConc'], 
+            'CuConc': x['CuConc'],
             'DepositionVoltage': x['Volt'], 
             'Deposition time': x['Time'], 
             'CO2ratio': x['CO2ratio'], 
@@ -185,12 +185,12 @@ class DataProcessing:
             'IL4': x['IL4'], 
             'IL5': x['IL5'], 
             'blank': x['blank'], 
-            'catalysis potential': -2.0,
-            'Catalysis Current': current, 
-            'FECO': FECO
+            'catalysis potential': -2.2,
+            'Catalysis Current': current*1000, # Convert to mA
+            'FECO': FECO*100 #Convert to %
         }
 
-        bulk_electrolysis_potential = -2.0
+        bulk_electrolysis_potential = -2.2
 
         if self.database.empty:
             self.database = pd.DataFrame([new_row_data])
@@ -202,14 +202,15 @@ class DataProcessing:
         
         self.database.to_csv(os.path.join(self.master_folder,'experiment_data.csv'), index=False)
 
-        return bulk_electrolysis_potential, current, FECO
+        return bulk_electrolysis_potential, current*1000, FECO*100
 
 
 
 if 'main' in __name__:
+    Master_folder = r"C:\Users\guazh\data\Month7_Run10"
     DataAgent = DataProcessing(Master_folder, Calibration_file)
     # for batch processing
-    doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
+    doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\Mon7_run7.csv"
     from Closed_Loop_Platform.DataProcessing.DoEFormatting import *
     exp_dicts = doeprocess(doepath)
     for expn, exp in exp_dicts.items():
@@ -221,4 +222,4 @@ if 'main' in __name__:
             DataAgent.display_result()
         except FileNotFoundError as e:
             print(e)
-        bulk_electrolysis_potential, current_density, FECO = DataAgent.encode(expn)
+        bulk_electrolysis_potential, current_density, FECO = DataAgent.encode(exp)

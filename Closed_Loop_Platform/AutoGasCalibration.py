@@ -9,10 +9,11 @@ import sys, glob, os
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import * 
 
 #%% Parameter setting
-main_folder = '2025-01-22_wholerange'  # Enter the name of your folder
+main_folder = '2025-01-22_wholerange_2'  # Enter the name of your folder
 gas_ratio = [100, 90, 80, 60, 40, 20, 10, 1]  # Enter the ratio you want to try in list
 
 #%% GC method setting
+'''
 gc = GC_Connector() #reopen the peaksimple software before running this command
 data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
 os.makedirs(data_path, exist_ok=True)
@@ -75,7 +76,7 @@ def start_measuring_calibration_curve(data_path = data_path):
 
     except Exception as e:
         print(f"Error occurred: {e}")
-
+'''
 #%%
 def DataProcessing(path = str):
     '''

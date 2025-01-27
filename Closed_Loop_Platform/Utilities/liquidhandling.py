@@ -37,7 +37,7 @@ volume = {
     '5mL': {'rpm': 100, 'second': 20},  # Rinsing
     '6mL': {'rpm': 100, 'second': 25},  # Rinsing
     '10mL': {'rpm': 100, 'second': 50},  # Rinsing
-    '20mL' :{'rpm': 100, 'second': 70},  # Rinsing
+    '20mL' :{'rpm': 100, 'second': 80},  # Rinsing
     '26mL' :{'rpm': 100, 'second': 110},  # Rinsing
     '50mL' :{'rpm': 100, 'second': 210}  # Rinsing
 }
@@ -195,22 +195,22 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
     def run_solution(solution, volume = volume_assigned, to_voirs = to_voir, from_voirs = from_voir):
         for _ in range(repetitions):
             plate.start_stirring()
-            mfc_co2.set_flow_rate(1)
-            mfc_co2ar.set_flow_rate(3.5)
+            mfc_co2.set_flow_rate(0)
+            mfc_co2ar.set_flow_rate(15)
             add_solution(solution, volume_add = volume , to_voirs = to_voirs, from_voirs = from_voirs)  # pump control
             mfc_co2ar.set_flow_rate(0)
-            mfc_co2.set_flow_rate(3.5)
+            mfc_co2.set_flow_rate(15)
             pumping_waste_out(where)  # pump control
             mfc_co2.set_flow_rate(0)
             print(f'{ _ + 1} rinsed by {solution}. ')
         print(f'{where} rinsed by {solution} completed')
 
     if target_solution == 'electrolyte' and from_voir == True:
-        mfc_co2.set_flow_rate(3.5)
+        mfc_co2.set_flow_rate(15)
         pumping_waste_out(where)
         mfc_co2.set_flow_rate(0)
     else:
-        mfc_co2.set_flow_rate(3.5)
+        mfc_co2.set_flow_rate(15)
         pumping_waste_out('both')
         mfc_co2.set_flow_rate(0)
 
@@ -218,21 +218,22 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
 
     # The case when adding prepared electrolyte from voir
     if target_solution == 'electrolyte' and from_voir == True and to_voir == False:
-        mfc_co2.set_flow_rate(1)
-        mfc_co2ar.set_flow_rate(3.5)
+        mfc_co2.set_flow_rate(0)
+        mfc_co2ar.set_flow_rate(15)
         add_solution(target_solution, volume_add=volume_assigned, to_voirs = to_voir,from_voirs=from_voir)  # pump control
         mfc_co2ar.set_flow_rate(0)
         print(f'{target_solution} added to {where}')
 
     elif target_solution == 'None': # If not target_solution not assigned, add water in defult
-        mfc_co2ar.set_flow_rate(3.5)
+        mfc_co2ar.set_flow_rate(15)
         add_solution('water', volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
         mfc_co2ar.set_flow_rate(0)
         print(f'{where} rinsed by water completed')
 
     else: #Normal
         run_solution(target_solution, volume=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
-        mfc_co2ar.set_flow_rate(3.5)
+        mfc_co2.set_flow_rate(0)
+        mfc_co2ar.set_flow_rate(15)
         add_solution(target_solution, volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
         mfc_co2ar.set_flow_rate(0)
         print(f'{where} rinsed by {target_solution} completed')
@@ -359,9 +360,9 @@ def PlatingSolutionFormulation(sample:dict):
         print(f'Diluting the plating solution from 0.5 M to {sample} M')
         plate.start_stirring()
         # Calculate the time required to pump out waste for dilution
-        dilution_time = int(100 * (0.5 - sample) / 0.5)
+        dilution_time = int(70 * (0.5 - sample) / 0.5)
         start_time = time.time()
-        pumping_waste_out('cell', times = dilution_time)
+        pumping_waste_out('cell', times = dilution_time*0.5)
         end_time = time.time()
         print(f'Pumping waste out for dilution in {end_time - start_time:.2f} seconds')
         # Add the required amount of solution for dilution

@@ -36,9 +36,9 @@ manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objec
 
 # Define thresholds using metric variables after experiment setup
 thresholds = [
-    ObjectiveThreshold(metric=manager.metric_bulk_electrolysis, bound=-2.0, relative=False),
+    ObjectiveThreshold(metric=manager.metric_bulk_electrolysis, bound=-2.2, relative=False),
     ObjectiveThreshold(metric=manager.metric_current_density, bound=100, relative=False),
-    ObjectiveThreshold(metric=manager.metric_fe_co, bound=0.9, relative=False),
+    ObjectiveThreshold(metric=manager.metric_fe_co, bound=100, relative=False),
 ]
 
 # Apply thresholds to the optimization config
@@ -51,7 +51,8 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
 exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions.csv"
 updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data.csv"
 manager.load_initial_data(exp_data, updated_data)
-# Load DOE data
+trial_index, next_experiment = manager.update()
+#%% Load DOE data
 doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
 exp_dicts = doeprocess(doepath)
 
@@ -73,7 +74,7 @@ def initialize_experiment(mainfold):
     LOG.setup_logging_for_experiment('Initial')
     # Note: The GC has been connected when calling the server.
     SIGNAL = CheckSignalFromGC()
-    check_experiment_preconditions()
+    #check_experiment_preconditions()
 
     messages = ['Start electrode regeneration', 'Finish electrode regeneration']
     for i, message in enumerate(messages):
@@ -95,11 +96,12 @@ def run_experiment(exp, exp_path, expn):
     # Stage 1: Cu Catalyst Deposition
     print('Start Cu catalyst deposition')
     PlatingSolutionFormulation(exp['CuConc'])  # Formulate DOE files
-    control_co2_ar_ratio(0)
+    control_co2_ar_ratio(0, flowrate=1)
     stirring(plate, 60)
     deposit_v, deposit_t = exp['Volt'], exp['Time']
 
     electrodeposition(exp_path, f'{expn}', deposit_v, deposit_t)
+    control_co2_ar_ratio(0, flowrate=1)
     Rinsing('cell', 'spelec', 'water', 1)
     print('Finish Cu catalyst deposition')
     os.system(f'python {script_path} -m "{"Finish Cu catalyst deposition"}"')
@@ -108,6 +110,7 @@ def run_experiment(exp, exp_path, expn):
     il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
     print('Preparing Electrolyte for bulk electrolysis...')
     #Elelectrolyte_Formulation(il_values) #
+    control_co2_ar_ratio(0, flowrate=1)
     Rinsing('cell', 'electrolyte', 'electrolyte', 1)
     os.system(f'python {script_path} -m "{"Finish Electrolyte Formulation"}"')
 
@@ -116,11 +119,11 @@ def run_experiment(exp, exp_path, expn):
     close_all_gas()
 
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=1)
-    time.sleep(60)
-    print('Purging gas for 1 minutes')
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=11)
+    time.sleep(180) # Necessary. DO NOT CHANGE
+    print('Purging gas for 3 minutes')
 
-    potential_windows = [-2.0]  # Pending determination
+    potential_windows = [-2.2]  # Pending determination
 
     SendCommandToGC("Is GC still running?")
     time.sleep(5)
@@ -142,9 +145,9 @@ def run_experiment(exp, exp_path, expn):
             insitu_echem_regeneration(exp_path)
             print('skip')
 
-    plate.start_stirring()
-    Rinsing('cell', 'water', 'water', 1)
-    Rinsing('voir', 'water', 'water', 1)
+    #plate.start_stirring()
+    #Rinsing('cell', 'water', 'water', 1)
+    #Rinsing('voir', 'water', 'water', 1)
 
 
 def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
@@ -157,7 +160,7 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
 
     if wait_for_gc_signal():
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
-        bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 600)
+        bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
 
     if wait_for_gc_signal():
         print("GC is running, proceed to perform electrode regeneration.") #Assume at this moment the GC is running the second injection.
@@ -189,19 +192,24 @@ def CO2Optimizer(mainfold, initialization=True):
         base_path = f'C:/Users/guazh/data/{mainfold}'
         # base_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/Data/{mainfold}'
         create_directory(base_path)
+        global LOG
+        log_folder = f'C:/Users/guazh/data/{mainfold}'
+        LOG = LoggingSystem(log_folder=log_folder)
+        LOG.create_master_logger()
+        open_terminal_to_view_log(os.path.join(log_folder, 'master.log'))
+        # Note: The GC has been connected when calling the server.
+        SIGNAL = CheckSignalFromGC()
+        check_experiment_preconditions()
         DPAgent.master_folder = base_path
 
-    for i in range(8):
+    for i in range(7):
         trial_index, next_experiment = manager.update() #suggest next experiment
+        exp = trial_index
+        expn = f'EXP{next_experiment:04d}'
+        LOG.setup_logging_for_experiment(expn)
         # Display the fetched parameters
         print(f"Next experiment: EXP{next_experiment:04d}")
         print(f"Next condition: {trial_index}")
-
-        exp = trial_index
-        expn = f'EXP{next_experiment:04d}'
-
-        LOG.setup_logging_for_experiment(expn)
-
         subfold = f'{expn}'
         exp_path = f"{base_path}/{subfold}"
         print(exp_path)
@@ -226,10 +234,10 @@ def CO2Optimizer(mainfold, initialization=True):
         )
         # Print the results of the completed trial
         result_summary = (
-            f"{expn} completed with:\n  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl\n  current_density: {current_density * 1000:.1f} mA\n  FE_CO: {FECO * 100:.1f} %"
+            f"{expn} completed with:\n  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl\n  current_density: {current_density:.1f} mA\n  FE_CO: {FECO:.1f} %"
         )
         result_summary2 = (
-            f"{expn} completed with:  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl;  current_density: {current_density * 1000:.1f} mA;  FE_CO: {FECO * 100:.1f} %"
+            f"{expn} completed with:  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl;  current_density: {current_density:.1f} mA;  FE_CO: {FECO:.1f} %"
         )
 
         print(result_summary)
@@ -246,11 +254,12 @@ def CO2Optimizer(mainfold, initialization=True):
 
 
 # Example Usage
-
+#%%
 if __name__ == "__main__":
-    main_folder = 'StageTest_0122_2'
+    #%%
+    main_folder = 'Month7_Run11'
     DPAgent = DataProcessing()
-    CO2Optimizer(main_folder, initialization=False)
+    CO2Optimizer(main_folder, initialization=True)
 
     # to extract the data stored in manager
     # Get completed trial data

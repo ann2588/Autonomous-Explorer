@@ -114,8 +114,8 @@ gs = GenerationStrategy(
 # Parameters, objectives, and thresholds month 7: catalyst optimization under different CO2 condition
 parameters = [
     {"name": "CuConc", "type": "choice", "values": [round(v, 2) for v in [0.2, 0.3, 0.4, 0.5]], "is_ordered": False},
-    {"name": "Volt", "type": "choice", "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3, -0.2], "is_ordered": False},
-    {"name": "Time", "type": "choice", "values": list(range(30, 181, 1)), "is_ordered": False},
+    {"name": "Volt", "type": "choice", "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3], "is_ordered": False},
+    {"name": "Time", "type": "choice", "values": list(range(30, 500, 20)), "is_ordered": False},
     {"name": "CO2ratio", "type": "choice", "values": list(range(0, 101, 1)), "is_ordered": False},
     {"name": "IL1", "type": "choice", "values": list(range(0, 1, 1)), "is_ordered": False},
     {"name": "IL2", "type": "choice", "values": list(range(0, 1, 1)), "is_ordered": False},
