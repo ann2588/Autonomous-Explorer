@@ -66,9 +66,9 @@ class ExperimentManager:
         )
 
         # Access the metrics and store them as attributes
-        self.metric_bulk_electrolysis = self.ax_client.experiment.optimization_config.objective.objectives[0].metric
-        self.metric_current_density = self.ax_client.experiment.optimization_config.objective.objectives[1].metric
-        self.metric_fe_co = self.ax_client.experiment.optimization_config.objective.objectives[2].metric
+        #self.metric_bulk_electrolysis = self.ax_client.experiment.optimization_config.objective.objectives[0].metric
+        self.metric_current_density = self.ax_client.experiment.optimization_config.objective.objectives[0].metric
+        self.metric_fe_co = self.ax_client.experiment.optimization_config.objective.objectives[1].metric
 
     def load_initial_data(self, experimental_conditions_file, objective_data_file):
         """
@@ -115,7 +115,7 @@ gs = GenerationStrategy(
 parameters = [
     {"name": "CuConc", "type": "choice", "values": [round(v, 2) for v in [0.2, 0.3, 0.4, 0.5]], "is_ordered": False},
     {"name": "Volt", "type": "choice", "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3], "is_ordered": False},
-    {"name": "Time", "type": "choice", "values": list(range(30, 500, 20)), "is_ordered": False},
+    {"name": "Time", "type": "choice", "values": list(range(30, 500, 1)), "is_ordered": False},
     {"name": "CO2ratio", "type": "choice", "values": list(range(0, 101, 1)), "is_ordered": False},
     {"name": "IL1", "type": "choice", "values": list(range(0, 1, 1)), "is_ordered": False},
     {"name": "IL2", "type": "choice", "values": list(range(0, 1, 1)), "is_ordered": False},
