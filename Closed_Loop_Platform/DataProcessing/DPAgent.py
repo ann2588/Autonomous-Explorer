@@ -1,3 +1,4 @@
+#%%
 import os
 import sys
 import glob
@@ -5,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import warnings
 # Dynamically add the project root to PYTHONPATH
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
+#sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 from Closed_Loop_Platform.DataProcessing.gc_dataprocessing import process_asc_files
 
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -94,12 +95,12 @@ class DataProcessing:
                 plt.show()  # Show the plot
 
             plotxy(itcurve['Time second'], itcurve['Current A']*1000)
-            last_30_seconds = itcurve[itcurve['Time second'] <= itcurve['Time second'].max() - 400]
-            average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
-            print(f'Average Current: {average_current:.2e} A')  # Print the average current
+            last_30_seconds = itcurve[itcurve['Time second'] <= itcurve['Time second'].max() - 100]
+            Average_current = last_30_seconds['Current A'].mean()  # Calculate the average current for the last 30 seconds
+            print(f'Average Current: {Average_current:.2e} A')  # Print the average current
             os.chdir('..')
 
-        return average_current  # Return the average current
+        return Average_current  # Return the average current
 
     def extract_faradaic_efficienty(self, current):
         """
@@ -186,7 +187,7 @@ class DataProcessing:
             'IL5': x['IL5'], 
             'blank': x['blank'], 
             'catalysis potential': -2.2,
-            'Catalysis Current': current*1000, # Convert to mA
+            'Catalysis Current': current*1000*FECO, # Convert to mA
             'FECO': FECO*100 #Convert to %
         }
 
@@ -204,22 +205,64 @@ class DataProcessing:
 
         return bulk_electrolysis_potential, current*1000, FECO*100
 
+    def OfflineDataUpdate(self, datafolder):
+        # File paths
+        experimental_conditions_path = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions.csv"
+        objective_data_path = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data.csv"
+        new_data_path = datafolder
+
+        # Load the files
+        experimental_conditions_df = pd.read_csv(experimental_conditions_path)
+        objective_data_df = pd.read_csv(objective_data_path)
+        new_data_df = pd.read_csv(new_data_path)
+
+        # Extract relevant columns for experimental conditions
+        experimental_conditions_new = new_data_df[[
+            "ExpID", "CuConc", "DepositionVoltage", "Deposition time", "CO2ratio",
+            "IL1", "IL2", "IL3", "IL4", "IL5", "blank"
+        ]].rename(columns={
+            "ExpID": "Exp",
+            "CuConc": "Cu",
+            "DepositionVoltage": "Volt",
+            "Deposition time": "Time",
+            "blank": "Blank"
+        })
+
+        # Append to the experimental conditions file
+        experimental_conditions_updated = pd.concat([experimental_conditions_df, experimental_conditions_new],
+                                                    ignore_index=True)
+        experimental_conditions_updated.to_csv(experimental_conditions_path, index=False)
+
+        # Extract relevant columns for objective data
+        objective_data_new = new_data_df[[
+            "ExpID", "catalysis potential", "Catalysis Current", "FECO"
+        ]].rename(columns={
+            "ExpID": "Exp#",
+            "catalysis potential": "The bulk electrolysis potential",
+            "Catalysis Current": "Average Current Density",
+            "FECO": "Average CO"
+        })
+
+        # Append to the objective data file
+        objective_data_updated = pd.concat([objective_data_df, objective_data_new], ignore_index=True)
+        objective_data_updated.to_csv(objective_data_path, index=False)
+
+        print("Files updated successfully.")
+
 
 
 if 'main' in __name__:
-    Master_folder = r"C:\Users\guazh\data\Month7_Run10"
+    Master_folder = r"C:\Users\guazh\data\Month9_Run8_CO2P100"
     DataAgent = DataProcessing(Master_folder, Calibration_file)
-    # for batch processing
-    doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\Mon7_run7.csv"
-    from Closed_Loop_Platform.DataProcessing.DoEFormatting import *
-    exp_dicts = doeprocess(doepath)
-    for expn, exp in exp_dicts.items():
-        expn = expn
-        exp = exp
-        DataAgent.exp_num = int(expn[3:])
-        print(DataAgent.exp_num)
-        try:
-            DataAgent.display_result()
-        except FileNotFoundError as e:
-            print(e)
-        bulk_electrolysis_potential, current_density, FECO = DataAgent.encode(exp)
+    list = [1,2]
+    exps=[
+        {'CuConc': 0.2, 'Volt': -0.4, 'Time': 476, 'CO2ratio': 10, 'IL1': 0, 'IL2': 0, 'IL3': 0, 'IL4': 0, 'IL5': 0, 'blank': 0}
+    ]
+    #for x,exp in zip(list,exps):
+    #    DataAgent.exp_num = x
+    #    DataAgent.encode(exps[0])
+
+
+    for x in list:
+        DataAgent.exp_num = x
+        DataAgent.encode(exps[0])

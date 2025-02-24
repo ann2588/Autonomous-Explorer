@@ -195,24 +195,24 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
     def run_solution(solution, volume = volume_assigned, to_voirs = to_voir, from_voirs = from_voir):
         for _ in range(repetitions):
             plate.start_stirring()
-            mfc_co2.set_flow_rate(0)
+            mfc_ar.set_flow_rate(1)
             mfc_co2ar.set_flow_rate(15)
             add_solution(solution, volume_add = volume , to_voirs = to_voirs, from_voirs = from_voirs)  # pump control
             mfc_co2ar.set_flow_rate(0)
-            mfc_co2.set_flow_rate(15)
+            mfc_ar.set_flow_rate(1)
             pumping_waste_out(where)  # pump control
-            mfc_co2.set_flow_rate(0)
+            mfc_ar.set_flow_rate(0)
             print(f'{ _ + 1} rinsed by {solution}. ')
         print(f'{where} rinsed by {solution} completed')
 
     if target_solution == 'electrolyte' and from_voir == True:
-        mfc_co2.set_flow_rate(15)
+        mfc_ar.set_flow_rate(15)
         pumping_waste_out(where)
-        mfc_co2.set_flow_rate(0)
+        mfc_ar.set_flow_rate(0)
     else:
-        mfc_co2.set_flow_rate(15)
+        mfc_ar.set_flow_rate(15)
         pumping_waste_out('both')
-        mfc_co2.set_flow_rate(0)
+        mfc_ar.set_flow_rate(0)
 
     run_solution(rinsing_solution, volume=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
 
@@ -220,21 +220,27 @@ def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, r
     if target_solution == 'electrolyte' and from_voir == True and to_voir == False:
         mfc_co2.set_flow_rate(0)
         mfc_co2ar.set_flow_rate(15)
+        mfc_ar.set_flow_rate(1)
         add_solution(target_solution, volume_add=volume_assigned, to_voirs = to_voir,from_voirs=from_voir)  # pump control
         mfc_co2ar.set_flow_rate(0)
+        mfc_ar.set_flow_rate(0)
         print(f'{target_solution} added to {where}')
 
     elif target_solution == 'None': # If not target_solution not assigned, add water in defult
         mfc_co2ar.set_flow_rate(15)
+        mfc_ar.set_flow_rate(1)
         add_solution('water', volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
         mfc_co2ar.set_flow_rate(0)
+        mfc_ar.set_flow_rate(0)
         print(f'{where} rinsed by water completed')
 
     else: #Normal
         run_solution(target_solution, volume=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
         mfc_co2.set_flow_rate(0)
+        mfc_ar.set_flow_rate(1)
         mfc_co2ar.set_flow_rate(15)
         add_solution(target_solution, volume_add=volume_assigned, to_voirs=to_voir, from_voirs=from_voir)
+        mfc_ar.set_flow_rate(0)
         mfc_co2ar.set_flow_rate(0)
         print(f'{where} rinsed by {target_solution} completed')
 
@@ -246,7 +252,8 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
 
     print(f'{valve}, {valve_port}')
     changing_port(valve, valve_port)
-    control_gas_flow(mfc_swtv, 'open', flow_rate=30)
+    #control_gas_flow(mfc_swtv, 'open', flow_rate=30)
+    mfc_swtv.set_flow_rate(30)
     # load mode initial filling
     pump.set_mode_pump_rpm(pump_channel, 100)  # check the input value
     pump.start(pump_channel)
@@ -264,10 +271,11 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
         changing_port(swtv, switching_position['injection'])
         print(f'Injecting {element}')
         pump.start(pump_channel)
-        time.sleep(3)
+        time.sleep(5)
         changing_port(swtv, switching_position['loading'])
         time.sleep(1)
         pump.stop(pump_channel)
+    mfc_swtv.set_flow_rate(0)
 
 def select_solution_IL(element= None):
     if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','Blank']:
@@ -310,7 +318,7 @@ def test_titration_module(sample):
     print('Titration Test module test completed')
 
 #please run below command and check in person to see if every channel is working properly
-titrationmoduletestsample = {'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1, 'Blank': 0}
+#titrationmoduletestsample = {'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1, 'Blank': 0}
 #test_titration_module(titrationmoduletestsample)
 
 #Electrolyte formulation

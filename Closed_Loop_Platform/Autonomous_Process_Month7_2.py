@@ -26,19 +26,17 @@ from Closed_Loop_Platform.Utilities import *
 
 #%% Machine Learning Agent setup
 objectives = {
-    "bulk_electrolysis_potential": ObjectiveProperties(minimize=True),
     "current_density": ObjectiveProperties(minimize=False),
     "FE_CO": ObjectiveProperties(minimize=False)
 }
 
 # Initialize manager
 manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objectives=objectives)
-
+#%%
 # Define thresholds using metric variables after experiment setup
 thresholds = [
-    ObjectiveThreshold(metric=manager.metric_bulk_electrolysis, bound=-2.2, relative=False),
-    ObjectiveThreshold(metric=manager.metric_current_density, bound=100, relative=False),
-    ObjectiveThreshold(metric=manager.metric_fe_co, bound=100, relative=False),
+    ObjectiveThreshold(metric=manager.metric_current_density, bound=5, relative=False),
+    ObjectiveThreshold(metric=manager.metric_fe_co, bound=10, relative=False),
 ]
 
 # Apply thresholds to the optimization config
@@ -46,7 +44,7 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
     objective=manager.ax_client.experiment.optimization_config.objective,
     objective_thresholds=thresholds,
 )
-
+#%%
 # Load data
 exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions.csv"
 updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data.csv"
@@ -123,17 +121,17 @@ def run_experiment(exp, exp_path, expn):
     time.sleep(180) # Necessary. DO NOT CHANGE
     print('Purging gas for 3 minutes')
 
-    potential_windows = [-2.2]  # Pending determination
+    voltage = [-2.2]  # Pending determination
 
     SendCommandToGC("Is GC still running?")
     time.sleep(5)
     if wait_for_gc_signal():
         print("GC finished measurement. Proceed to next experiment.")
-    for voltage in potential_windows:
-        execute_bulk_electrolysis(exp, exp_path, expn, voltage)
-        SendCommandToGC("Is GC still running?")
-        if wait_for_gc_signal():
-            print("GC finished measurement. Proceed to next experiment.")
+
+    execute_bulk_electrolysis(exp, exp_path, expn, voltage)
+    SendCommandToGC("GC Running?")
+    if wait_for_gc_signal():
+        print("GC is running. Proceed to electrode regeneration.")
 
     # Stage 4: Electrode regeneration
     messages = ['Start electrode regeneration', 'Finish electrode regeneration']
@@ -162,8 +160,8 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
         bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
 
-    if wait_for_gc_signal():
-        print("GC is running, proceed to perform electrode regeneration.") #Assume at this moment the GC is running the second injection.
+    if wait_for_gc_signal(timeout = 600):
+        print("GC is running, proceed to next action.") #Assume at this moment the GC is running the second injection.
     else:
         print("Hey, GC is not running!!!")
         os.system(f'python {script_path} -m "GC is not running, check it out."')
@@ -202,7 +200,7 @@ def CO2Optimizer(mainfold, initialization=True):
         check_experiment_preconditions()
         DPAgent.master_folder = base_path
 
-    for i in range(7):
+    for i in range(20):
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
         expn = f'EXP{next_experiment:04d}'
@@ -214,6 +212,7 @@ def CO2Optimizer(mainfold, initialization=True):
         exp_path = f"{base_path}/{subfold}"
         print(exp_path)
         create_directory(exp_path)
+        DPAgent.master_folder = base_path
 
         print("------Data Collection Start------")
         run_experiment(exp, exp_path, expn)
@@ -228,23 +227,29 @@ def CO2Optimizer(mainfold, initialization=True):
             trial_index=DPAgent.exp_num-1,  # Use the iteration index as the trial index, zero based
             raw_data={
                 "bulk_electrolysis_potential": (bulk_electrolysis_potential, None),  # Provide the value and its variance (None here)
-                "current_density": (current_density, None),
+                "current_density": (current_density*FECO/100, None),
                 "FE_CO": (FECO, None)
             }
         )
         # Print the results of the completed trial
         result_summary = (
-            f"{expn} completed with:\n  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl\n  current_density: {current_density:.1f} mA\n  FE_CO: {FECO:.1f} %"
+            f"{expn} completed with:\n  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl\n  partial_current_density: {current_density*FECO/100:.1f} mA\n  FE_CO: {FECO:.1f} %"
         )
         result_summary2 = (
-            f"{expn} completed with:  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl;  current_density: {current_density:.1f} mA;  FE_CO: {FECO:.1f} %"
+            f"{expn} completed with:  bulk_electrolysis_potential: {bulk_electrolysis_potential} V vs Ag/AgCl;  partialcurrent_density: {current_density*FECO/100:.1f} mA;  FE_CO: {FECO:.1f} %"
         )
 
         print(result_summary)
         print("------------------------------------------------")
         time.sleep(10)
         os.system(f'python {script_path} -m "{expn} completed. result:{result_summary2}"')
-
+        if i == 9 or 19:
+            print('GC start baking')
+            SendCommandToGC("Baking")
+            os.system(f'python {script_path} -m "10th trial reached. GC start to bake column"')
+            time.sleep(3000)
+        else:
+            continue
 
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
@@ -257,9 +262,9 @@ def CO2Optimizer(mainfold, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month7_Run11'
-    DPAgent = DataProcessing()
-    CO2Optimizer(main_folder, initialization=True)
+    main_folder = 'Month8_Run1'
+    #DPAgent = DataProcessing()
+    CO2Optimizer(main_folder, initialization=False)
 
     # to extract the data stored in manager
     # Get completed trial data

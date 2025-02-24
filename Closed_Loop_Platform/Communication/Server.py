@@ -146,13 +146,25 @@ while True:
         logging.info("GC finished the experiment.")
         response = "GC finished the experiment."
 
+    elif 'Running' in message:
+        logging.info("Checking if GC is running")
+        # Simulate waiting and starting sample injection
+        while gc.is_running():
+            print('GC is running.')
+        # Simulate waiting and starting sample injection
+        logging.info("GC is running.")
+        response = "GC is running."
+
 
     elif 'Baking' in message:
+        logging.info("GC loading baking control file")
+        gc.ctrl_file = r"C:\Peak498Win10\GCMETHOD\Parameter\0622-2019_270C_50min_baking.CON"
+        gc.load_ctrl_file()  # Running error but actually successful
         logging.info("GC start baking...")
         # Simulate baking process
-
+        gc.set_running()
         # Simulate baking process
-        time.sleep(2)
+        time.sleep(3000)
         logging.info("GC finished baking.")
         response = "GC completed baking."
         logging.info("GC completed baking.")
@@ -168,3 +180,4 @@ while True:
     # Close the connection after sending the response
     conn.close()
     logging.info("Connection closed")
+

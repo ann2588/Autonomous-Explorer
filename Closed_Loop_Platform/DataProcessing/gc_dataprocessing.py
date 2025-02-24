@@ -36,7 +36,7 @@ def find_percent_height_indices(y_data, peak_idx, percentage):
     return left_idx, right_idx
 
 #确定region1 region2的cutoff location， 是330-400秒区域里的最低点
-def find_minimum_cutoff(data, time_data, start_time=330, end_time=400):
+def find_minimum_cutoff(data, time_data, start_time=400, end_time=430):
     """ Finds the minimum value in the data within a specified time range and uses a position 10 indices to the left as the cutoff. """
     valid_indices = np.where((time_data >= start_time) & (time_data <= end_time))[0]
     if len(valid_indices) == 0:
@@ -75,8 +75,8 @@ def analyze_intensity(data, column_name, output_filename):
         "H2 as TCD": (51, 77.4),
         "O2 as TCD": (93.42, 109.44),
         "N2 as TCD": (118.44, 172.02),
-        "CH4 as FID 1": (193.2, 235.44),
-        "CO as FID": (280.4, 333.36)
+        "CH4 as FID 1": (150, 240),
+        "CO as FID": (300, 420)
     }
 
     gas_regions_region2 = {
@@ -106,14 +106,15 @@ def analyze_intensity(data, column_name, output_filename):
     combined_data = pd.concat([combined_data, region2_data])
     combined_corrected = np.concatenate((region1_corrected, nan_array))
     combined_corrected = np.concatenate((combined_corrected, region2_corrected))
-
     # General peak detection for Region 1 and Region 2
-    peaks_region1, _ = find_peaks(region1_corrected, height=0.1, width=(0.5,100), prominence=0.3)
+    peaks_region1, _ = find_peaks(region1_corrected, height=0.1, width=(1,130), prominence=0.1)
+    print(peaks_region1)
     peaks_region2, _ = find_peaks(region2_corrected, height=3, width=(5, 40), prominence=6)
     peaks_region2_adjusted = [int(peak + region_cutoff+40) for peak in peaks_region2]
 
     # Calculate areas and collect peak data
     peak_info_region1 = calculate_area(peaks_region1, combined_corrected, combined_data, gas_regions_region1, 0.05)
+    print(peak_info_region1)
     peak_info_region2 = calculate_area(peaks_region2_adjusted, combined_corrected, combined_data, gas_regions_region2, 0.1)
 
     all_peak_info = peak_info_region1 + peak_info_region2

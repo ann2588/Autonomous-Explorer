@@ -5,7 +5,7 @@ from alicat import FlowMeter
 #%%
 ## Dictionary to store CO2 ratios and corresponding MFC settings
 gas_ratio = [0, 2, 8, 10, 25, 50, 75, 100]
-gas_shortname = ['Ar', 'C-2', 'C-8', 'C-10', 'C-15', 'C-20', 'C-25', 'C-50', 'C-75', 'CO2']
+gas_shortname = ['C-2', 'C-8', 'C-10', 'C-15', 'C-20', 'C-25', 'C-50', 'C-75', 'CO2']
 #gas_dict = {el: ex for el, ex in zip(gas_shortname, gas_num)}
 
 
@@ -15,6 +15,10 @@ mfc_ar = FlowController(port = portaccess.port_MFC_Ar)
 mfc_co2ar = FlowController(port = portaccess.port_MFC_Arco2)
 mfc_swtv = FlowController(port = portaccess.port_MFC_ArSWTV)
 mfm = FlowMeter(port = portaccess.port_MFM)
+
+mfc_co2.set_gas('CO2')
+mfc_ar.set_gas('Ar')
+
 #%%
 def readpoint(data:str, flowcontroller):
     """
@@ -47,8 +51,10 @@ def control_co2_ar_ratio(co2_ratio, flowrate = 30):
     flow_co2 = total_flow_rate * (co2_ratio / 100)
     flow_ar = total_flow_rate - flow_co2
 
-    mfc_co2.set_flow_rate(flow_co2)
+    mfc_co2.set_pressure(pressure=14.6)
+    mfc_ar.set_pressure(pressure=14.6)
     mfc_ar.set_flow_rate(flow_ar)
+    mfc_co2.set_flow_rate(flow_co2)
     mfc_co2ar.set_flow_rate(total_flow_rate*0.8)
     mfc_co2ar.set_pressure(pressure = 14.6)
     print(f"CO2 flow: {flow_co2} sccm, Ar flow: {flow_ar} sccm")
