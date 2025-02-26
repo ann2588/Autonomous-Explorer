@@ -132,10 +132,6 @@ def run_experiment(exp, exp_path, expn):
     if wait_for_gc_signal():
         print("GC finished measurement. Proceed to next experiment.")
     execute_bulk_electrolysis(exp, exp_path, expn, voltage)
-    SendCommandToGC("GC Running?")
-    time.sleep(5)
-    if wait_for_gc_signal():
-        print("GC is running. Proceed to electrode regeneration.")
 
     # Stage 4: Electrode regeneration
     messages = ['Start electrode regeneration', 'Finish electrode regeneration']
@@ -207,7 +203,7 @@ def CO2Optimizer(mainfold, initialization=True):
 
         DPAgent.master_folder = base_path
 
-    for i in range(10):
+    for i in range(5):
         global trial_index, next_experiment, exp, expn, exp_path, bulk_electrolysis_potential, current_density, FECO
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
@@ -266,7 +262,7 @@ if __name__ == "__main__":
     DPAgent = DataProcessing()
 
     #%%
-    CO2Optimizer(main_folder, initialization=False)
+    CO2Optimizer(main_folder, initialization=True)
 
     # to extract the data stored in manager
     # Get completed trial data

@@ -153,7 +153,7 @@ class DataProcessing:
             molarity_CO = conc_CO * 1e-6  # Convert ppm to mol/L
             #molarity_H2 = conc_H2 * 1e-6  # Convert ppm to mol/L
 
-            FECO = molarity_CO * (1 / 22.414) * 2 * 96485 / (abs(current) * 60)  # Adjusted for molarity
+            FECO = molarity_CO * 2 * 96485 / (abs(current)*1000 * 60/10)  # Adjusted for molarity
             #
             os.chdir('..')
         return FECO
