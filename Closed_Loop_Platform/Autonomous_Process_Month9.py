@@ -35,8 +35,8 @@ manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objec
 #%%
 # Define thresholds using metric variables after experiment setup
 thresholds = [
-    ObjectiveThreshold(metric=manager.metric_current_density, bound=5, relative=False),
-    ObjectiveThreshold(metric=manager.metric_fe_co, bound=10, relative=False),
+    ObjectiveThreshold(metric=manager.metric_current_density, bound=0, relative=False),
+    ObjectiveThreshold(metric=manager.metric_fe_co, bound=0, relative=False),
 ]
 
 # Apply thresholds to the optimization config
@@ -262,7 +262,8 @@ if __name__ == "__main__":
     DPAgent = DataProcessing()
 
     #%%
-    CO2Optimizer(main_folder, initialization=True)
+    time.sleep(1200)
+    CO2Optimizer(main_folder, initialization=False)
 
     # to extract the data stored in manager
     # Get completed trial data
