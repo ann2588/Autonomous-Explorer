@@ -126,13 +126,13 @@ while True:
         logging.info("GC completed loading control files.")
 
     elif 'Wait 360 second and start 1 sample Injections' in message:
-        logging.info("GC waiting 360 seconds before sample injection...")
+        logging.info("GC waiting 450 seconds before sample injection...")
         # Simulate waiting and starting sample injection
-        time.sleep(360)  # Wait for 180 seconds
+        time.sleep(450)  # Wait for 180 seconds
         gc.set_running()
         # Simulate waiting and starting sample injection
         logging.info("GC started sample injection.")
-        response = "GC started sample injection after 360 seconds."
+        response = "GC started sample injection after 450 seconds."
         logging.info("GC completed sample injection.")
 
 

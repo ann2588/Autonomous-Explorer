@@ -2,6 +2,7 @@
 This version compatitble with the flow chemistry where the electrolyte connected to selection valve C channel 4
 instead of only connected to voir
 to use this version, Please copy this module to Utilities and replace liquid handling
+This version use the flow chemistry design that the liquid inlet into both chamber are seperated
 '''
 
 from .portaccess import *
@@ -25,7 +26,7 @@ iccb = RegloICCFourChannel(device_port=port_pumpB, name = 'Iccb')
 cat = str()
 #%%PUMP and VALVE
 iccb_channel = {'waste_ano': 1, 'waste_cat': 2, 'slvc': 3, 'waste_voir': 4}
-icca_channel = {'water': 1, 'electrolyte': 2, 'il': 3}
+icca_channel = {'water': 1, 'electrolyte': 2, 'il': 3, 'electrolyte_ano':4}
 switching_position = {'loading': 1, 'injection': 2}
 stock_solution_port_c = {'water': 1, 'cu': 2, 'spelec': 3, 'electrolyte': 4, 'hno3': 5, 'voir': 6}
 stock_solution_port_a = {'blank': 1, 'IL1': 2, 'IL2': 3, 'IL3': 4, 'IL4': 5, 'IL5': 6}
@@ -116,7 +117,7 @@ def select_solution_rinsing(solution_type=None, to_voir=False, from_voir=False):
         return None, None, None, None
     return pump, channel, valve, port
 #%%
-def pumping_waste_out(where:str = None, times = 100):
+def pumping_waste_out(where:str = None, times = 80):
     if times != 100:
         print('Removing liquid to dilute the bulk concentration...')
     else:
@@ -175,13 +176,26 @@ def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = Fa
         flow_rate = 100 #rpm
         second = seconds
         flushing(pump, channel, flow_rate, second)
+    elif solution_type == 'electrolyte' or solution_type == 'cu' and to_voirs == False:
+        plate.start_stirring()
+        rpm = 100
+        icca.set_mode_pump_rpm(4, rpm)
+        iccb.set_mode_pump_rpm(3, rpm)
 
+        icca.start(4)
+        iccb.start(3)
+        print(f'Starting {iccb} channel {channel} at {rpm} rpm')
+        time.sleep(50)
+
+        icca.stop(4)
+        iccb.stop(3)
     ## For normal Add solution
     else:
         flow_rate, second = assign_flowrate(volume_add)
         flushing(pump, channel, flow_rate, second)
 
-def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '20mL', from_voir = False):
+
+def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '10mL', from_voir = False):
     '''
     :param where: assign 'voir' or 'cell'
     :param rinsing_solution: 'electrolyte, 'il', 'water', 'cu', 'hno3', 'regen', 'spelec'
@@ -328,7 +342,7 @@ def Elelectrolyte_Formulation(sample:dict):
     Formulating the electrolyte with ionic liquid. Prepared in solution vior
     Status: Pending test run
     '''
-    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='20mL')
+    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='10mL')
     print('50 mL electrolyte added to reservoir')
     
     for element, partition in sample.items():
@@ -346,7 +360,7 @@ def Elelectrolyte_Formulation(sample:dict):
     
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
-    Rinsing('cell', 'water', 'electrolyte', 2, volume_assigned='20mL', from_voir=True)
+    Rinsing('cell', 'water', 'electrolyte', 2, volume_assigned='10mL', from_voir=True)
     print('Electrolyte in voir transferred to cell.')
 
 def PlatingSolutionFormulation(sample:dict):
@@ -359,7 +373,7 @@ def PlatingSolutionFormulation(sample:dict):
     # Add 50 mL of plating solution to the cell
     close_all_gas()
     start_time = time.time()
-    Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='20mL')
+    Rinsing('cell', 'spelec', 'cu', 1, volume_assigned='10mL')
     end_time = time.time()
     print(f'20 mL 0.5 M plating solution added to cell in {end_time - start_time:.2f} seconds')
 
@@ -368,9 +382,9 @@ def PlatingSolutionFormulation(sample:dict):
         print(f'Diluting the plating solution from 0.5 M to {sample} M')
         plate.start_stirring()
         # Calculate the time required to pump out waste for dilution
-        dilution_time = int(70 * (0.5 - sample) / 0.5)
+        dilution_time = int(50 * (0.5 - sample) / 0.5)
         start_time = time.time()
-        pumping_waste_out('cell', times = dilution_time*0.5)
+        pumping_waste_out('cell', times = dilution_time)
         end_time = time.time()
         print(f'Pumping waste out for dilution in {end_time - start_time:.2f} seconds')
         # Add the required amount of solution for dilution

@@ -5,7 +5,7 @@ global pstat, model, path
 import os, time, datetime
 from datetime import datetime
 import matplotlib.pyplot as plt
-from .liquidhandling import stirring, plate, Rinsing
+from .liquidhandling_noT import stirring, plate, Rinsing
 from scipy.signal import savgol_filter
 import seaborn as sns
 import warnings
