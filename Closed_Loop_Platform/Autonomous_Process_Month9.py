@@ -206,7 +206,7 @@ def CO2Optimizer(mainfold, initialization=True):
 
         DPAgent.master_folder = base_path
 
-    for i in range(5):
+    for i in range(2):
         global trial_index, next_experiment, exp, expn, exp_path, bulk_electrolysis_potential, current_density, FECO
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
@@ -267,7 +267,6 @@ if __name__ == "__main__":
     DPAgent = DataProcessing()
 
     #%%
-    time.sleep(300)
     CO2Optimizer(main_folder, initialization=False)
 
     # to extract the data stored in manager
