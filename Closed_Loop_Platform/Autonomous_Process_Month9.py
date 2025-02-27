@@ -124,7 +124,7 @@ def run_experiment(exp, exp_path, expn):
     close_all_gas()
 
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=10)
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=3)
     time.sleep(180) # Necessary. DO NOT CHANGE
     print('Purging gas for 3 minutes')
 
@@ -263,11 +263,11 @@ def CO2Optimizer(mainfold, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month9_Run18_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
+    main_folder = 'Month9_Run19_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
 
     #%%
-
+    time.sleep(300)
     CO2Optimizer(main_folder, initialization=False)
 
     # to extract the data stored in manager
