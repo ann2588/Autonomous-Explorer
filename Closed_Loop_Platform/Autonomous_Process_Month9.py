@@ -20,7 +20,7 @@ print("Main script is running...")
 
 #%%
 from Closed_Loop_Platform.DataProcessing import *
-from Closed_Loop_Platform.BOtorchV2_Cu import *
+from Closed_Loop_Platform.BOtorchV2_Month7 import *
 from Closed_Loop_Platform.Utilities import *
 
 
@@ -50,10 +50,13 @@ exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\exp
 updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cu.csv"
 #%%
 manager.load_initial_data(exp_data, updated_data)
-#trial_index, next_experiment = manager.update()
-#print("Dummy trial")
-#print(f"Next experiment: EXP{next_experiment:04d}")
-#print(f"Next condition: {trial_index}")
+'''
+trial_index, next_experiment = manager.update()
+print("Dummy trial")
+print(f"Next experiment: EXP{next_experiment:04d}")
+print(f"Next condition: {trial_index}")
+exp = trial_index
+'''
 #%% Load DOE data
 doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
 exp_dicts = doeprocess(doepath)
@@ -109,11 +112,11 @@ def run_experiment(exp, exp_path, expn):
     os.system(f'python {script_path} -m "{"Finish Cu catalyst deposition"}"')
 
     # Stage 2: Electrolyte Preparation
-    #il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
-    #print('Preparing Electrolyte for bulk electrolysis...')
-    #Elelectrolyte_Formulation(il_values) #
+    il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
+    print('Preparing Electrolyte for bulk electrolysis...')
+    Elelectrolyte_Formulation(il_values) #
     control_co2_ar_ratio(0, flowrate=1)
-    Rinsing('cell', 'electrolyte', 'electrolyte', 1, from_voir=False)
+    #Rinsing('cell', 'electrolyte', 'electrolyte', 1, from_voir=False)
     os.system(f'python {script_path} -m "{"Finish Electrolyte Formulation"}"')
 
     # Stage 3: Bulk Electrolysis
@@ -221,6 +224,8 @@ def CO2Optimizer(mainfold, initialization=True):
         print("------Data Collection Start------")
         run_experiment(exp, exp_path, expn)
         print("------Data Collection Finished---")
+
+        #%%
         print(f"Experiment number: {expn}")
         print(f"Experiment for {expn}: {trial_index}")
         DPAgent.exp_num = int(expn[3:])
@@ -246,7 +251,7 @@ def CO2Optimizer(mainfold, initialization=True):
         print("------------------------------------------------")
 
         os.system(f'python {script_path} -m "{expn} completed. result:{result_summary2}"')
-
+        #%%
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
 
@@ -258,11 +263,11 @@ def CO2Optimizer(mainfold, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month9_Run17_Cu_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
+    main_folder = 'Month9_Run18_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
 
     #%%
-    time.sleep(1200)
+
     CO2Optimizer(main_folder, initialization=False)
 
     # to extract the data stored in manager

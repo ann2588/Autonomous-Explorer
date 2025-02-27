@@ -162,7 +162,7 @@ def pumping_waste_out(where:str = None, times = 80):
 
 def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = False, from_voirs = False):
     plate.start_stirring()
-    pump, channel, valve, port = select_solution_rinsing(solution_type, to_voir = to_voirs, from_voir = from_voirs  )
+    pump, channel, valve, port = select_solution_rinsing(solution_type, to_voir = to_voirs, from_voir = from_voirs)
 
     if valve is None and port is None and to_voirs is True: # Electrolyte and water into voir from pump a
         print(f'{solution_type} {pump} {channel} {valve} {port}')
@@ -176,23 +176,28 @@ def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = Fa
         flow_rate = 100 #rpm
         second = seconds
         flushing(pump, channel, flow_rate, second)
-    elif solution_type == 'electrolyte' or solution_type == 'cu' and to_voirs == False:
-        plate.start_stirring()
-        rpm = 100
-        icca.set_mode_pump_rpm(4, rpm)
-        iccb.set_mode_pump_rpm(3, rpm)
+    elif to_voirs == False:
+        if solution_type == 'electrolyte' or solution_type == 'cu':
+            plate.start_stirring()
+            rpm = 100
+            icca.set_mode_pump_rpm(4, rpm)
+            iccb.set_mode_pump_rpm(3, rpm)
 
-        icca.start(4)
-        iccb.start(3)
-        print(f'Starting {iccb} channel {channel} at {rpm} rpm')
-        time.sleep(50)
+            icca.start(4)
+            iccb.start(3)
+            print(f'Starting {iccb} channel {channel} at {rpm} rpm')
+            time.sleep(50)
 
-        icca.stop(4)
-        iccb.stop(3)
+            icca.stop(4)
+            iccb.stop(3)
+        else:
+            flow_rate, second = assign_flowrate(volume_add)
+            flushing(pump, channel, flow_rate, second)
     ## For normal Add solution
     else:
         flow_rate, second = assign_flowrate(volume_add)
         flushing(pump, channel, flow_rate, second)
+
 
 
 def Rinsing(where:str = None, rinsing_solution:str=None, target_solution=None, repetitions=3, acidrinse=False, volume_assigned = '10mL', from_voir = False):
@@ -342,8 +347,8 @@ def Elelectrolyte_Formulation(sample:dict):
     Formulating the electrolyte with ionic liquid. Prepared in solution vior
     Status: Pending test run
     '''
-    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='10mL')
-    print('50 mL electrolyte added to reservoir')
+    Rinsing('voir', 'water', 'electrolyte', 1, volume_assigned='20mL')
+    print('20 mL electrolyte added to reservoir')
     
     for element, partition in sample.items():
         if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','blank']:
@@ -360,7 +365,7 @@ def Elelectrolyte_Formulation(sample:dict):
     
     time.sleep(30) #Stir for 30 sec
     print('Electrolyte formulated in reservoir')
-    Rinsing('cell', 'water', 'electrolyte', 2, volume_assigned='10mL', from_voir=True)
+    Rinsing('cell', 'water', 'electrolyte', 1, volume_assigned='10mL', from_voir=True)
     print('Electrolyte in voir transferred to cell.')
 
 def PlatingSolutionFormulation(sample:dict):
