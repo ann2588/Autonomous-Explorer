@@ -17,7 +17,7 @@ start_server_in_new_terminal(server_script)
 time.sleep(5)
 open_terminal_to_view_log(r"C:\Users\guazh\data\server.log")
 print("Main script is running...")
-
+print("fjiowe")
 #%%
 from Closed_Loop_Platform.DataProcessing import *
 from Closed_Loop_Platform.BOtorchV2_Month7 import *

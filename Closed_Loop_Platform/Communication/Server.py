@@ -78,6 +78,7 @@ CommandList = [
 global gc
 gc = GC_Connector()
 
+
 # %%
 while True:
     conn, addr = server_socket.accept()  # Accept a connection
@@ -141,7 +142,7 @@ while True:
         # Simulate waiting and starting sample injection
         while gc.is_running():
             print('GC is still running. Wait for another minute.')
-            time.sleep(60)
+            response = ('GC is still running. Wait for another minute.')
         # Simulate waiting and starting sample injection
         logging.info("GC finished the experiment.")
         response = "GC finished the experiment."

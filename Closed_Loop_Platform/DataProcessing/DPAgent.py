@@ -13,6 +13,8 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 Master_folder = r"C:\Users\guazh\data\StageTest_0122_2"
 Calibration_file = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\DataProcessing\GC calibration - 2025-01-26.csv"
+
+
 class DataProcessing:
 
     def __init__(self, master_folder=Master_folder, calibration_file = Calibration_file):
@@ -70,7 +72,7 @@ class DataProcessing:
         dirs = [d for d in glob.glob(f"*EXP{self.exp_num:04d}*") if not d.endswith('.log')]  # Find directories matching the experiment number and exclude those ending with .log
         os.chdir(dirs[0] if dirs else None)  # Change to the first matching directory if found
         dirs = glob.glob(f"*CO2*")  # Find directories related to CO2 and step 1
-        dirss = [d for d in dirs if "GC" not in d]  # Filter out directories containing "GC"
+        dirss = [d for d in dirs if "GC" not in d and "Pre" not in d]
         print(dirss)
         for dir in dirss:
             os.chdir(dir if dir else None)  # Change to the first matching directory if found

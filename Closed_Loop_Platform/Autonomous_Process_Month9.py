@@ -1,9 +1,12 @@
 '''
-# Last update: 01/25/2025
+# Last update: 03/17/2025, DDL: 03/26/2025
 #
-# Note: This is the version without human interaction in close-loop process in version 12/27. Pending update.
+# Note: 
 # Update:
-Finalize the autonomous framework (yeah~)
+# Todo: 
+# X Power Intermittance Optimization Script #Currently conduct catalysis, and wait under open circuit for 15 minute, then do the catalysis again with product characterization (Pending testing)
+# X Make sure GC Column Baking Column every 10 trials (Pending Testing)
+# X Pull out the Constraint setting. Modify them in the script
 '''
 
 import sys, os, subprocess
@@ -24,11 +27,24 @@ from Closed_Loop_Platform.BOtorchV2_Month7 import *
 from Closed_Loop_Platform.Utilities import *
 
 
-#%% Machine Learning Agent setup
+#%% Machine Learning Agent setup. Modify your constraint and objective according to your need
 objectives = {
     "current_density": ObjectiveProperties(minimize=False),
     "FE_CO": ObjectiveProperties(minimize=False)
 }
+
+parameters = [
+    {"name": "CuConc", "type": "choice", "values": [round(v, 2) for v in [0.2, 0.3, 0.4, 0.5]], "is_ordered": False},
+    {"name": "Volt", "type": "choice", "values": [-1.0, -0.9, -0.8, -0.7, -0.6, -0.5, -0.4, -0.3], "is_ordered": False},
+    {"name": "Time", "type": "choice", "values": list(range(40, 500, 1)), "is_ordered": False},
+    {"name": "CO2ratio", "type": "choice", "values": list(range(100, 101, 1)), "is_ordered": False},
+    {"name": "IL1", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+    {"name": "IL2", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+    {"name": "IL3", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+    {"name": "IL4", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+    {"name": "IL5", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+    {"name": "blank", "type": "choice", "values": list(range(0, 20, 1)), "is_ordered": False},
+]
 
 # Initialize manager
 manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objectives=objectives)
@@ -48,7 +64,7 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
 # Load data
 exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cu.csv"
 updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cu.csv"
-#%%
+
 manager.load_initial_data(exp_data, updated_data)
 '''
 trial_index, next_experiment = manager.update()
@@ -93,8 +109,33 @@ def initialize_experiment(mainfold):
     print("Experiment logs saved.")  # Prints to console
 
     return base_path
+
+def check_gc_status():
+    """
+    Function to check if the GC is still running.
+    Continues checking every minute until 'finished' is received.
+    Use this command when the execution of next action need the confirmation that GC is not running
+    """
+    while True:
+        SendCommandToGC("Is GC still running?")
+        time.sleep(5)  # Wait for server response
+
+        res = wait_for_gc_signal()  # Store response
+        if not res:
+            print("No response from GC. Retrying...")
+            continue  # Retry if no response
+
+        if "finished" in res.lower():
+            print("GC finished measurement. Proceeding to the next experiment.")
+            break  # Exit the loop and proceed
+
+        elif "still" in res.lower():
+            print("GC is still running. Waiting another 3 minute before rechecking...")
+            time.sleep(180)  # Wait for another minute before checking again
+        else:
+            print(f"Unexpected response from GC: {res}. Retrying...")
 #%%
-def run_experiment(exp, exp_path, expn):
+def run_experiment(exp, exp_path, expn, trialamount):
     """Runs individual experiment based on given parameters."""
     print(f'Running {expn}...')
 
@@ -129,11 +170,18 @@ def run_experiment(exp, exp_path, expn):
     print('Purging gas for 3 minutes')
 
     voltage = -2.0
+    svoltage = str(voltage).replace('.', 'p')
 
-    SendCommandToGC("Is GC still running?")
-    time.sleep(5)
-    if wait_for_gc_signal():
-        print("GC finished measurement. Proceed to next experiment.")
+    # Preactivate the catalyst, ocp for 15 minute
+    bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"Pre_{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
+    close_all_gas()
+    time.sleep(900)
+
+    #The real catalysis
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=3)
+    time.sleep(180) # Necessary. DO NOT CHANGE
+    print('Purging gas for 3 minutes')
+    check_gc_status()
     execute_bulk_electrolysis(exp, exp_path, expn, voltage)
 
     # Stage 4: Electrode regeneration
@@ -145,6 +193,18 @@ def run_experiment(exp, exp_path, expn):
             close_all_gas()
             Rinsing('cell','water', 'hno3', volume_assigned='10mL', acidrinse=True, repetitions=1)
             print('skip')
+
+    # Bake the column every 10 trials
+    if trialamount % 10 == 0:
+        print(f'{trialamount} trials reached. GC start baking')
+        SendCommandToGC("Is GC still running?")
+        time.sleep(5)
+        check_gc_status()
+        print("GC finished measurement. Proceed to next action.")
+        SendCommandToGC("Baking")
+        os.system(f'python {script_path} -m "10th trial reached. GC start to bake column"')
+    else:
+        print(f'{trialamount} trials reached. No need for baking yet.')
 
     #plate.start_stirring()
     #Rinsing('cell', 'water', 'water', 1)
@@ -158,18 +218,17 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
     read_all_gas()
     svoltage = str(voltage).replace('.', 'p')
     SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{int(exp['CO2ratio'])}CO2_{svoltage}")
-
+    time.sleep(5)
     if wait_for_gc_signal():
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
         plate.start_stirring()
         bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
-
+    
     if wait_for_gc_signal(timeout = 600):
         print("GC is running, proceed to next action.") #Assume at this moment the GC is running the second injection.
     else:
         print("Hey, GC is not running!!!")
         os.system(f'python {script_path} -m "GC is not running, check it out."')
-
 
 def wait_for_gc_signal(timeout=300):
     """Waits for GC signal with a timeout."""
@@ -185,7 +244,8 @@ def wait_for_gc_signal(timeout=300):
     return True
 
 #%%
-def CO2Optimizer(mainfold, initialization=True):
+def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
+
     """Main function to orchestrate the CO2 optimization experiments."""
     if initialization:
         global base_path
@@ -206,7 +266,7 @@ def CO2Optimizer(mainfold, initialization=True):
 
         DPAgent.master_folder = base_path
 
-    for i in range(2):
+    for i in range(num_trials):
         global trial_index, next_experiment, exp, expn, exp_path, bulk_electrolysis_potential, current_density, FECO
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
@@ -222,7 +282,7 @@ def CO2Optimizer(mainfold, initialization=True):
         DPAgent.master_folder = base_path
 
         print("------Data Collection Start------")
-        run_experiment(exp, exp_path, expn)
+        run_experiment(exp, exp_path, expn, i)
         print("------Data Collection Finished---")
 
         #%%
@@ -251,7 +311,10 @@ def CO2Optimizer(mainfold, initialization=True):
         print("------------------------------------------------")
 
         os.system(f'python {script_path} -m "{expn} completed. result:{result_summary2}"')
-        #%%
+
+        
+
+    
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
 
@@ -265,24 +328,4 @@ if __name__ == "__main__":
     #%%
     main_folder = 'Month9_Run19_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
-
-    #%%
-    CO2Optimizer(main_folder, initialization=False)
-
-    # to extract the data stored in manager
-    # Get completed trial data
-    experiment = manager.ax_client.experiment
-    trials = experiment.trials
-    # Collect data
-    records = []
-    for trial_index, trial in trials.items():
-        if trial.status.is_completed:
-            params = trial.arm.parameters
-            results = trial.fetch_data().df
-            for _, row in results.iterrows():
-                record = {"trial_index": trial_index, **params, **row.to_dict()}
-                records.append(record)
-
-    # Create a DataFrame
-    results_df = pd.DataFrame(records)
-    print(results_df)
+    CO2Optimizer(main_folder, num_trials = 5, initialization=False)

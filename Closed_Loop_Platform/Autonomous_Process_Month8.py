@@ -1,7 +1,9 @@
 '''
-# Last update: 01/25/2025
+# Last update: 02/27/2025
 #
-# Note: This is the version without human interaction in close-loop process in version 12/27. Pending update.
+# Note: 
+# - The version with new flow chemistry setup. Performing ionic liquid opitimization.
+# - The constraint should be modify in the package of BOTorch_V2_Month7 
 # Update:
 Finalize the autonomous framework (yeah~)
 '''
@@ -35,8 +37,8 @@ manager = ExperimentManager(generation_strategy=gs, parameters=parameters, objec
 #%%
 # Define thresholds using metric variables after experiment setup
 thresholds = [
-    ObjectiveThreshold(metric=manager.metric_current_density, bound=5, relative=False),
-    ObjectiveThreshold(metric=manager.metric_fe_co, bound=10, relative=False),
+    ObjectiveThreshold(metric=manager.metric_current_density, bound=0, relative=False),
+    ObjectiveThreshold(metric=manager.metric_fe_co, bound=0, relative=False),
 ]
 
 # Apply thresholds to the optimization config
@@ -46,14 +48,17 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
 )
 #%%
 # Load data
-exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions.csv"
-updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data.csv"
+exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cu.csv"
+updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cu.csv"
 #%%
 manager.load_initial_data(exp_data, updated_data)
+'''
 trial_index, next_experiment = manager.update()
 print("Dummy trial")
 print(f"Next experiment: EXP{next_experiment:04d}")
 print(f"Next condition: {trial_index}")
+exp = trial_index
+'''
 #%% Load DOE data
 doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
 exp_dicts = doeprocess(doepath)
@@ -84,7 +89,7 @@ def initialize_experiment(mainfold):
         os.system(f'python {script_path} -m "{message}"')
         if i == 0:
             print()
-            Rinsing('cell','water', 'hno3', volume_assigned='20mL', acidrinse=True, repetitions=1)
+            Rinsing('cell','water', 'hno3', volume_assigned='10mL', acidrinse=True, repetitions=1)
 
     LOG.restore_stdout()
     print("Experiment logs saved.")  # Prints to console
@@ -113,7 +118,7 @@ def run_experiment(exp, exp_path, expn):
     print('Preparing Electrolyte for bulk electrolysis...')
     Elelectrolyte_Formulation(il_values) #
     control_co2_ar_ratio(0, flowrate=1)
-    #Rinsing('cell', 'electrolyte', 'electrolyte', 1, from_voir=True)
+    #Rinsing('cell', 'electrolyte', 'electrolyte', 1, from_voir=False)
     os.system(f'python {script_path} -m "{"Finish Electrolyte Formulation"}"')
 
     # Stage 3: Bulk Electrolysis
@@ -121,20 +126,17 @@ def run_experiment(exp, exp_path, expn):
     close_all_gas()
 
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=11)
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=3)
     time.sleep(180) # Necessary. DO NOT CHANGE
     print('Purging gas for 3 minutes')
 
-    voltage = -2.2
+    voltage = -2.0
 
     SendCommandToGC("Is GC still running?")
     time.sleep(5)
     if wait_for_gc_signal():
         print("GC finished measurement. Proceed to next experiment.")
     execute_bulk_electrolysis(exp, exp_path, expn, voltage)
-    SendCommandToGC("GC Running?")
-    if wait_for_gc_signal():
-        print("GC is running. Proceed to electrode regeneration.")
 
     # Stage 4: Electrode regeneration
     messages = ['Start electrode regeneration', 'Finish electrode regeneration']
@@ -143,7 +145,7 @@ def run_experiment(exp, exp_path, expn):
         os.system(f'python {script_path} -m "{message}"')
         if i == 0:
             close_all_gas()
-            Rinsing('cell','water', 'hno3', volume_assigned='20mL', acidrinse=True, repetitions=1)
+            Rinsing('cell','water', 'hno3', volume_assigned='10mL', acidrinse=True, repetitions=1)
             print('skip')
 
     #plate.start_stirring()
@@ -161,6 +163,7 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
 
     if wait_for_gc_signal():
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
+        plate.start_stirring()
         bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
 
     if wait_for_gc_signal(timeout = 600):
@@ -184,7 +187,8 @@ def wait_for_gc_signal(timeout=300):
     return True
 
 #%%
-def CO2Optimizer(mainfold, initialization=True):
+def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
+
     """Main function to orchestrate the CO2 optimization experiments."""
     if initialization:
         global base_path
@@ -201,11 +205,11 @@ def CO2Optimizer(mainfold, initialization=True):
         open_terminal_to_view_log(os.path.join(log_folder, 'master.log'))
         # Note: The GC has been connected when calling the server.
         SIGNAL = CheckSignalFromGC()
-        check_experiment_preconditions()
+        #check_experiment_preconditions()
 
         DPAgent.master_folder = base_path
 
-    for i in range(8):
+    for i in range(num_trials):
         global trial_index, next_experiment, exp, expn, exp_path, bulk_electrolysis_potential, current_density, FECO
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
@@ -224,7 +228,7 @@ def CO2Optimizer(mainfold, initialization=True):
         run_experiment(exp, exp_path, expn)
         print("------Data Collection Finished---")
 
-
+        #%%
         print(f"Experiment number: {expn}")
         print(f"Experiment for {expn}: {trial_index}")
         DPAgent.exp_num = int(expn[3:])
@@ -248,10 +252,9 @@ def CO2Optimizer(mainfold, initialization=True):
 
         print(result_summary)
         print("------------------------------------------------")
-        time.sleep(10)
+
         os.system(f'python {script_path} -m "{expn} completed. result:{result_summary2}"')
-
-
+        #%%
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
 
@@ -263,12 +266,13 @@ def CO2Optimizer(mainfold, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month9_Run12_IL' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
+    main_folder = 'Month9_Run19_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
 
     #%%
-    CO2Optimizer(main_folder, initialization=False)
+    CO2Optimizer(main_folder, num_trials = 5, initialization=False)
 
+    '''
     # to extract the data stored in manager
     # Get completed trial data
     experiment = manager.ax_client.experiment
@@ -286,3 +290,4 @@ if __name__ == "__main__":
     # Create a DataFrame
     results_df = pd.DataFrame(records)
     print(results_df)
+    '''

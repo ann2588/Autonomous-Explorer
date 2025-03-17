@@ -10,7 +10,35 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/Closed_Loop_Platform/experimental_conditions.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/Closed_Loop_Platform/experimental_conditions_cu.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/Closed_Loop_Platform/initial_experimental_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/Closed_Loop_Platform/updated_objective_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/Closed_Loop_Platform/updated_objective_data_cu.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
