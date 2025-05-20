@@ -37,8 +37,8 @@ volume = {
     '4mL': {'rpm': 50, 'second': 40},  # Reaction volume
     '5mL': {'rpm': 100, 'second': 20},  # Rinsing
     '6mL': {'rpm': 100, 'second': 25},  # Rinsing
-    '10mL': {'rpm': 100, 'second': 50},  # Rinsing
-    '20mL' :{'rpm': 100, 'second': 80},  # Rinsing
+    '10mL': {'rpm': 100, 'second': 40},  # Rinsing
+    '20mL' :{'rpm': 100, 'second': 50},  # Rinsing
     '26mL' :{'rpm': 100, 'second': 110},  # Rinsing
     '50mL' :{'rpm': 100, 'second': 210}  # Rinsing
 }
@@ -179,14 +179,14 @@ def add_solution(solution_type, volume_add = None, seconds = None, to_voirs = Fa
     elif to_voirs == False:
         if solution_type == 'electrolyte' or solution_type == 'cu':
             plate.start_stirring()
-            rpm = 100
+            rpm = int(volume['10mL']['rpm'])
             icca.set_mode_pump_rpm(4, rpm)
             iccb.set_mode_pump_rpm(3, rpm)
 
             icca.start(4)
             iccb.start(3)
             print(f'Starting {iccb} channel {channel} at {rpm} rpm')
-            time.sleep(50)
+            time.sleep(int(volume['10mL']['second']))
 
             icca.stop(4)
             iccb.stop(3)
@@ -297,7 +297,7 @@ def titration(element, number_of_drops, pump, valve, valve_port, pump_channel): 
     mfc_swtv.set_flow_rate(0)
 
 def select_solution_IL(element= None):
-    if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','Blank']:
+    if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5','blank']:
         valve = valve_slva
         valve_port = stock_solution_port_a[element]
         pump = icca  # to remove the quote
@@ -323,7 +323,7 @@ def test_titration_module(sample):
     Status: Pending test run
     '''
     for element, partition in sample.items():
-        if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5', 'Blank']:
+        if element in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5', 'blank']:
             if partition == 0.0:
                 continue
             else:
@@ -337,7 +337,7 @@ def test_titration_module(sample):
     print('Titration Test module test completed')
 
 #please run below command and check in person to see if every channel is working properly
-#titrationmoduletestsample = {'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1, 'Blank': 0}
+titrationmoduletestsample = {'Blank': 1,'IL1': 1, 'IL2': 1, 'IL3': 1, 'IL4': 1, 'IL5': 1}
 #test_titration_module(titrationmoduletestsample)
 
 #Electrolyte formulation
@@ -387,7 +387,7 @@ def PlatingSolutionFormulation(sample:dict):
         print(f'Diluting the plating solution from 0.5 M to {sample} M')
         plate.start_stirring()
         # Calculate the time required to pump out waste for dilution
-        dilution_time = int(50 * (0.5 - sample) / 0.5)
+        dilution_time = int(volume['10mL']['second'] * (0.5 - sample) / 0.5)
         start_time = time.time()
         pumping_waste_out('cell', times = dilution_time)
         end_time = time.time()

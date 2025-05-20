@@ -1,9 +1,9 @@
 '''
 # Last update: 03/17/2025, DDL: 03/26/2025
 #
-# Note: 
+# Note:
 # Update:
-# Todo: 
+# Todo:
 # X Power Intermittance Optimization Script #Currently conduct catalysis, and wait under open circuit for 15 minute, then do the catalysis again with product characterization (Pending testing)
 # X Make sure GC Column Baking Column every 10 trials (Pending Testing)
 # X Pull out the Constraint setting. Modify them in the script
@@ -60,11 +60,11 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
     objective=manager.ax_client.experiment.optimization_config.objective,
     objective_thresholds=thresholds,
 )
-#%%
+#%
 # Load data
-exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cu.csv"
-updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cu.csv"
-
+exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cuil.csv"
+updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cuil.csv"
+#%%
 manager.load_initial_data(exp_data, updated_data)
 '''
 trial_index, next_experiment = manager.update()
@@ -73,7 +73,7 @@ print(f"Next experiment: EXP{next_experiment:04d}")
 print(f"Next condition: {trial_index}")
 exp = trial_index
 '''
-#%% Load DOE data
+#% Load DOE data
 doepath = r"C:\Users\guazh\PycharmProjects\CO2Platform\Trial_Generation\DoE_randombatch3.csv"
 exp_dicts = doeprocess(doepath)
 
@@ -109,7 +109,7 @@ def initialize_experiment(mainfold):
     print("Experiment logs saved.")  # Prints to console
 
     return base_path
-
+#%%
 def check_gc_status():
     """
     Function to check if the GC is still running.
@@ -117,19 +117,21 @@ def check_gc_status():
     Use this command when the execution of next action need the confirmation that GC is not running
     """
     while True:
+        time.sleep(5)  # Wait for server response
         SendCommandToGC("Is GC still running?")
         time.sleep(5)  # Wait for server response
 
-        res = wait_for_gc_signal()  # Store response
-        if not res:
+        T, res= wait_for_gc_signal()  # Store response
+        print(res)
+        if not T:
             print("No response from GC. Retrying...")
             continue  # Retry if no response
 
-        if "finished" in res.lower():
+        if "finished" in str(res).lower():
             print("GC finished measurement. Proceeding to the next experiment.")
             break  # Exit the loop and proceed
 
-        elif "still" in res.lower():
+        elif "still" in str(res).lower():
             print("GC is still running. Waiting another 3 minute before rechecking...")
             time.sleep(180)  # Wait for another minute before checking again
         else:
@@ -153,6 +155,7 @@ def run_experiment(exp, exp_path, expn, trialamount):
     os.system(f'python {script_path} -m "{"Finish Cu catalyst deposition"}"')
 
     # Stage 2: Electrolyte Preparation
+    close_all_gas()
     il_values = {key: exp[key] for key in ['IL1', 'IL2', 'IL3', 'IL4', 'IL5']}
     print('Preparing Electrolyte for bulk electrolysis...')
     Elelectrolyte_Formulation(il_values) #
@@ -165,7 +168,7 @@ def run_experiment(exp, exp_path, expn, trialamount):
     close_all_gas()
 
     #run_CV_HER_varyE(exp_path, sample=expn, gas=f"{exp['CO2ratio']}CO2", sr_cv=50)
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=3)
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=5)
     time.sleep(180) # Necessary. DO NOT CHANGE
     print('Purging gas for 3 minutes')
 
@@ -175,12 +178,13 @@ def run_experiment(exp, exp_path, expn, trialamount):
     # Preactivate the catalyst, ocp for 15 minute
     bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"Pre_{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
     close_all_gas()
-    time.sleep(900)
+    time.sleep(900) # Simulating
 
     #The real catalysis
-    control_co2_ar_ratio(exp['CO2ratio'], flowrate=3)
+    control_co2_ar_ratio(exp['CO2ratio'], flowrate=5)
     time.sleep(180) # Necessary. DO NOT CHANGE
     print('Purging gas for 3 minutes')
+    time.sleep(2)
     check_gc_status()
     execute_bulk_electrolysis(exp, exp_path, expn, voltage)
 
@@ -195,9 +199,8 @@ def run_experiment(exp, exp_path, expn, trialamount):
             print('skip')
 
     # Bake the column every 10 trials
-    if trialamount % 10 == 0:
+    if trialamount % 10 == 0 and trialamount != 0:
         print(f'{trialamount} trials reached. GC start baking')
-        SendCommandToGC("Is GC still running?")
         time.sleep(5)
         check_gc_status()
         print("GC finished measurement. Proceed to next action.")
@@ -210,7 +213,7 @@ def run_experiment(exp, exp_path, expn, trialamount):
     #Rinsing('cell', 'water', 'water', 1)
     #Rinsing('voir', 'water', 'water', 1)
 
-
+#%%
 def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
     """Executes bulk electrolysis for a specific voltage."""
     print(f"Running experiment with CO2/Ar ratio {exp['CO2ratio']}%.")
@@ -219,29 +222,46 @@ def execute_bulk_electrolysis(exp, exp_path, expn, voltage):
     svoltage = str(voltage).replace('.', 'p')
     SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{int(exp['CO2ratio'])}CO2_{svoltage}")
     time.sleep(5)
-    if wait_for_gc_signal():
+    T3, _ = CheckSignalFromGC()
+    T3 = True
+
+    if "unavailable" in _:
+        time.sleep(5)
+        SendCommandToGC(f"Loading Control Files, subfolder: {exp_path}, filename: {expn}_{int(exp['CO2ratio'])}CO2_{svoltage}")
+        T3, _ = wait_for_gc_signal()
+        T3 = True
+
+    if T3:
+        time.sleep(5)
         SendCommandToGC("Wait 360 second and start 1 sample Injections")
+        time.sleep(5)
         plate.start_stirring()
         bulk_electrolysis_CP(exp_path, sample=expn, E_ed=voltage, note=f"{int(exp['CO2ratio'])}CO2_{svoltage}", Time_ed = 400)
-    
-    if wait_for_gc_signal(timeout = 600):
+    T2, _ = wait_for_gc_signal(timeout = 600)
+    if T2:
         print("GC is running, proceed to next action.") #Assume at this moment the GC is running the second injection.
     else:
         print("Hey, GC is not running!!!")
         os.system(f'python {script_path} -m "GC is not running, check it out."')
-
+#%%
 def wait_for_gc_signal(timeout=300):
     """Waits for GC signal with a timeout."""
     start_time = time.time()
-    SIGNAL = CheckSignalFromGC()
-    while not SIGNAL:
+    T, SIGNAL = CheckSignalFromGC()
+    if "unavailable" in SIGNAL:
+        SendCommandToGC("Is GC still running?")
+        T, SIGNAL = CheckSignalFromGC()
+
+    while not T:
         if time.time() - start_time > timeout:
             logging.error("Timeout: GC did not respond within the timeout period.")
+            SIGNAL = "Timeout"
             os.system(f'python {script_path} -m "Timeout: GC did not respond in time."')
-            return False
+            return False, SIGNAL
+
         time.sleep(10)
-        SIGNAL = CheckSignalFromGC()
-    return True
+        T, SIGNAL = CheckSignalFromGC()
+    return T, SIGNAL
 
 #%%
 def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
@@ -261,18 +281,21 @@ def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
         LOG.create_master_logger()
         open_terminal_to_view_log(os.path.join(log_folder, 'master.log'))
         # Note: The GC has been connected when calling the server.
-        SIGNAL = CheckSignalFromGC()
-        #check_experiment_preconditions()
+        time.sleep(2)
+
 
         DPAgent.master_folder = base_path
 
     for i in range(num_trials):
+
         global trial_index, next_experiment, exp, expn, exp_path, bulk_electrolysis_potential, current_density, FECO
         trial_index, next_experiment = manager.update() #suggest next experiment
         exp = trial_index
         expn = f'EXP{next_experiment:04d}'
         LOG.setup_logging_for_experiment(expn)
         # Display the fetched parameters
+        time.sleep(5)
+        check_gc_status()
         print(f"Next experiment: EXP{next_experiment:04d}")
         print(f"Next condition: {trial_index}")
         subfold = f'{expn}'
@@ -285,7 +308,7 @@ def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
         run_experiment(exp, exp_path, expn, i)
         print("------Data Collection Finished---")
 
-        #%%
+        #%
         print(f"Experiment number: {expn}")
         print(f"Experiment for {expn}: {trial_index}")
         DPAgent.exp_num = int(expn[3:])
@@ -312,9 +335,9 @@ def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
 
         os.system(f'python {script_path} -m "{expn} completed. result:{result_summary2}"')
 
-        
 
-    
+
+
     # Final rinsing
     Rinsing('cell', 'water', 'water', 3)
 
@@ -326,6 +349,6 @@ def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month9_Run19_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
+    main_folder = 'Month9_Run13_2p0V_power' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
-    CO2Optimizer(main_folder, num_trials = 5, initialization=False)
+    CO2Optimizer(main_folder, num_trials = 10, initialization=False)

@@ -112,7 +112,7 @@ def CheckSignalFromGC():
         # Attempt to receive the response from the server
         response = client_socket.recv(1024).decode('utf-8')
         print(f"Response from server: {response}")
-        return True  # Successfully received response
+        return True, response  # Successfully received response
 
     except socket.timeout:
         print("No response from server within 30 second.")

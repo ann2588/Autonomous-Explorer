@@ -48,8 +48,8 @@ manager.ax_client.experiment.optimization_config = MultiObjectiveOptimizationCon
 )
 #%%
 # Load data
-exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cu.csv"
-updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cu.csv"
+exp_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\experimental_conditions_cuil.csv"
+updated_data = r"C:\Users\guazh\PycharmProjects\CO2Platform\Closed_Loop_Platform\updated_objective_data_cuil.csv"
 #%%
 manager.load_initial_data(exp_data, updated_data)
 '''
@@ -266,11 +266,11 @@ def CO2Optimizer(mainfold:str, num_trials:int, initialization=True):
 #%%
 if __name__ == "__main__":
     #%%
-    main_folder = 'Month9_Run19_IL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
+    main_folder = 'Month10_Run2_CuIL_2p0V' # Check why no flow into GC. check if the tube flow into GC stuck. Check the quick connection.
     DPAgent = DataProcessing()
 
-    #%%
-    CO2Optimizer(main_folder, num_trials = 5, initialization=False)
+    #%
+    CO2Optimizer(main_folder, num_trials = 20, initialization=False)
 
     '''
     # to extract the data stored in manager

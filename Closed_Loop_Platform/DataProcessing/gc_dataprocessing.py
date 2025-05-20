@@ -1,3 +1,4 @@
+#%%
 '''
 Code for analyzing the gas chromatography data
 Author: Muxing Xiong
@@ -11,6 +12,9 @@ import pandas as pd
 import numpy as np
 from scipy.signal import find_peaks
 from pybaselines import Baseline
+import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+plt.rcParams['font.family'] = 'Arial'  # Set font to Arial for this session
 
 def find_percent_height_indices(y_data, peak_idx, percentage):
     """ Finds indices at _percentage_ height of the peak for area calculation. """
@@ -159,9 +163,74 @@ def process_asc_files(folder_path):
         #print(f"Analyzing {file_name} and saving results to {output_filename}...")
         analyze_intensity(data, 'Intensity_1', os.path.join(folder_path, output_filename))
 
+def plot_asc_files(folder_path):
+    '''
+    This function process the TCD and FID signal under passed folder.
+    Generate
+
+
+    '''
+    asc_files = [f for f in os.listdir(folder_path) if f.endswith('.ASC')] # Currently process only one electrolysis. Pending post analysis.
+
+    #print(asc_files)
+
+    for i, file_name in enumerate(asc_files, start=1):
+        file_path = os.path.join(folder_path, file_name)
+        with open(file_path, "r", encoding='utf-8') as file:
+            lines = file.readlines()
+
+        filtered_data = []
+        for line in lines:
+            if line.strip().startswith('IPOINT='):
+                break
+            if line.strip() and ',' in line:
+                filtered_data.append(line.strip().split(','))
+
+        data = pd.DataFrame(filtered_data, columns=['Intensity_1', 'Intensity_2']).astype(float)
+        # Assign retention time based on index multiplied by 0.2
+        data['Retention Time'] = np.arange(len(data)) * 0.2
+        data['Intensity_1'] /= 1000  # Convert from uV to mV
+
+        # Generate a unique number for the CSV filename, padded to 3 digits
+        unique_number = "FID" if file_name.find("FID") != -1 else "TCD"
+        output_filename = f"peak_data_{unique_number}.csv"
+        if unique_number == 'FID':
+            color = cm.viridis(float(folder_path)/100)  # 0.0 = dark purple, 1.0 = yellow-green
+            plt.plot(data['Retention Time'], data['Intensity_1'],color = color, label = f'{int(int(folder_path)*0.01*10000*0.1)} ppm')
+
 '''
 if __name__ == "__main__":
     # Example usage
     folder_path = f'/Users/Yi-An/Documents/000_Project/044_FAARM_PA-004/TestRunForDataStructure/2024-12-12-EXP0001/GCEXP0001_22.0CO2_-1.0_step1'
     process_asc_files(folder_path)
 '''
+main_folder = 'Month11_Manual/Campaign_Cat'  # Enter the name of your folder
+data_path = f'C:/Users/guazh/data/{main_folder}'  # Update your folder here
+os.chdir(data_path)
+folders = [folder for folder in os.listdir()
+           if os.path.isdir(folder) and
+           folder != ".DS_Store" and
+           folder != "Archive" and
+           not folder.endswith('.png') and
+           not folder.endswith('.csv') and
+           not folder.endswith('.CON') and
+           not folder.endswith('.svg')]
+folders.sort(key=lambda x: os.path.getctime(x))
+plt.figure(figsize=(3.6, 4.4))
+plt.xlim(0, 600)
+plt.ylim(0, 10)
+#plt.tick_params(top=False, right=False)   # hide ticks
+plt.tick_params(top=True, right=True)     # show ticks
+for folder in folders:
+    plot_asc_files(folder) # the trace will be plotted here
+    print(folder)
+    os.chdir(data_path)
+plt.xlabel('Retention Time (s)')
+plt.ylabel('Signal (mV)')
+plt.legend(frameon=False, loc= 'upper left')
+# Hide ticks
+plt.tick_params(top=False, right=False)   # hide ticks
+plt.tight_layout()
+plt.savefig('chromatograph.png', dpi = 600)
+plt.savefig('chromatograph.svg')
+plt.show()
