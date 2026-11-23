@@ -1,0 +1,9 @@
+cff-version: 1.0.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: Lai
+  given-names: Yi-An
+orcid: https://orcid.org/0009-0001-5604-0816
+title: An autonomous explorer for CO2 electrocatalysis with closed-loop catalyst and electrolyte optimization
+version: v1.0.1
+date-released: 2026-11-23
